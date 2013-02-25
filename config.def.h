@@ -14,7 +14,7 @@ static const char urgbgcolor[]      = "#204a87";
 static const char urgfgcolor[]      = "#729fcf";
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
-static const unsigned int topgap    = 19;       /* gap at top of screen */
+static const unsigned int topgap    = 27;       /* gap at top of screen */
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
