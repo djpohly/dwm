@@ -64,6 +64,7 @@ enum { NetSupported, NetWMName, NetWMState,
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
+enum { StRun, StShutdown, StRestart }; /* state */
 
 typedef union {
 	int i;
@@ -181,7 +182,6 @@ static void movemouse(const Arg *arg);
 static Client *nexttiled(Client *c);
 static void pop(Client *);
 static void propertynotify(XEvent *e);
-static void quit(const Arg *arg);
 static Monitor *recttomon(int x, int y, int w, int h);
 static void resize(Client *c, int x, int y, int w, int h, Bool interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
@@ -200,6 +200,7 @@ static void setup(void);
 static void showhide(Client *c);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
+static void state(const Arg *arg);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
@@ -231,6 +232,7 @@ static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
+static unsigned int runState = StRun;
 static void (*handler[LASTEvent]) (XEvent *) = {
 	[ButtonPress] = buttonpress,
 	[ClientMessage] = clientmessage,
@@ -247,7 +249,6 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify
 };
 static Atom wmatom[WMLast], netatom[NetLast];
-static Bool running = True;
 static Cur *cursor[CurLast];
 static ClrScheme scheme[SchemeLast];
 static Display *dpy;
@@ -1175,11 +1176,6 @@ propertynotify(XEvent *e) {
 	}
 }
 
-void
-quit(const Arg *arg) {
-	running = False;
-}
-
 Monitor *
 recttomon(int x, int y, int w, int h) {
 	Monitor *m, *r = selmon;
@@ -1302,7 +1298,7 @@ run(void) {
 	XEvent ev;
 	/* main event loop */
 	XSync(dpy, False);
-	while(running && !XNextEvent(dpy, &ev))
+	while(runState == StRun && !XNextEvent(dpy, &ev))
 		if(handler[ev.type])
 			handler[ev.type](&ev); /* call handler */
 }
@@ -1535,6 +1531,11 @@ spawn(const Arg *arg) {
 		perror(" failed");
 		exit(EXIT_SUCCESS);
 	}
+}
+
+void
+state(const Arg *arg) {
+	runState = arg->ui;
 }
 
 void
@@ -1969,5 +1970,7 @@ main(int argc, char *argv[]) {
 	run();
 	cleanup();
 	XCloseDisplay(dpy);
+	if(runState == StRestart)
+		execvp(argv[0], argv);
 	return EXIT_SUCCESS;
 }
