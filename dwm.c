@@ -220,6 +220,7 @@ static void updatewindowtype(Client *c);
 static void updatetitle(Client *c);
 static void updatewmhints(Client *c);
 static void view(const Arg *arg);
+static void warp(const Client *c);
 static Client *wintoclient(Window w);
 static Monitor *wintomon(Window w);
 static int xerror(Display *dpy, XErrorEvent *ee);
@@ -375,6 +376,8 @@ arrange(Monitor *m) {
 		restack(m);
 	} else for(m = mons; m; m = m->next)
 		arrangemon(m);
+	if(m == selmon)
+		warp(m->sel);
 }
 
 void
@@ -772,6 +775,7 @@ focusmon(const Arg *arg) {
 					in gedit and anjuta */
 	selmon = m;
 	focus(NULL);
+	warp(m->sel);
 }
 
 void
@@ -1299,6 +1303,8 @@ restack(Monitor *m) {
 	}
 	XSync(dpy, False);
 	while(XCheckMaskEvent(dpy, EnterWindowMask, &ev));
+	if(m == selmon)
+		warp(m->sel);
 }
 
 void
@@ -1889,6 +1895,25 @@ view(const Arg *arg) {
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
 	focus(NULL);
 	arrange(selmon);
+}
+
+void
+warp(const Client *c) {
+	Window dummy;
+	int x, y, di;
+	unsigned int dui;
+
+	if(!c)
+		return;
+	XQueryPointer(dpy, root, &dummy, &dummy, &x, &y, &di, &di, &dui);
+	if(x > c->x && y > c->y && x < c->x + c->w && y < c->y + c->h)
+		return;
+	XSelectInput(dpy, root, SubstructureRedirectMask
+		& EnterWindowMask);
+	XWarpPointer(dpy, None, c->win, 0, 0, 0, 0,
+		c->w / 2, c->h / 2);
+	XSelectInput(dpy, root, SubstructureRedirectMask | SubstructureNotifyMask
+		| EnterWindowMask | LeaveWindowMask | StructureNotifyMask);
 }
 
 Client *
