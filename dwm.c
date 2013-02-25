@@ -157,6 +157,7 @@ static void detach(Client *c);
 static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
+static void drawbarnum(Monitor *m, unsigned int i);
 static void drawbars(void);
 static void enternotify(XEvent *e);
 static void focus(Client *c);
@@ -653,16 +654,24 @@ dirtomon(int dir) {
 
 void
 drawbar(Monitor *m) {
-	unsigned int i, occ = 0, urg = 0;
+	unsigned int i;
+	Monitor *x;
+
+	for(i = 0, x = mons; x && x != m; i++, x = x->next);
+	drawbarnum(m, i);
+}
+
+void
+drawbarnum(Monitor *m, unsigned int i) {
+	unsigned int occ = 0, urg = 0;
 	Client *c;
 
-	if(m != selmon)
-		return;
 	for(c = m->clients; c; c = c->next) {
 		occ |= c->tags;
 		if(c->isurgent)
 			urg |= c->tags;
 	}
+	printf("%d\n", i);
 	for(i = 0; i < LENGTH(tags); i++) {
 		if(m->tagset[m->seltags] & 1 << i) {
 			printf("^fg(%s)^bg(%s)", normbgcolor, normfgcolor);
@@ -687,9 +696,10 @@ drawbar(Monitor *m) {
 void
 drawbars(void) {
 	Monitor *m;
+	unsigned int i;
 
-	for(m = mons; m; m = m->next)
-		drawbar(m);
+	for(i = 0, m = mons; m; i++, m = m->next)
+		drawbarnum(m, i);
 }
 
 void
