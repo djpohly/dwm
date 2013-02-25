@@ -156,7 +156,6 @@ static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
 static void detachstack(Client *c);
-static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbarnum(Monitor *m, unsigned int i);
 static void drawbars(void);
@@ -165,6 +164,7 @@ static void focus(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
+static Monitor *getmon(unsigned int n);
 static Bool getrootptr(int *x, int *y);
 static long getstate(Window w);
 static Bool gettextprop(Window w, Atom atom, char *text, unsigned int size);
@@ -638,21 +638,6 @@ detachstack(Client *c) {
 	}
 }
 
-Monitor *
-dirtomon(int dir) {
-	Monitor *m = NULL;
-
-	if(dir > 0) {
-		if(!(m = selmon->next))
-			m = mons;
-	}
-	else if(selmon == mons)
-		for(m = mons; m->next; m = m->next);
-	else
-		for(m = mons; m->next != selmon; m = m->next);
-	return m;
-}
-
 void
 drawbar(Monitor *m) {
 	unsigned int i;
@@ -767,7 +752,7 @@ focusmon(const Arg *arg) {
 
 	if(!mons->next)
 		return;
-	if((m = dirtomon(arg->i)) == selmon)
+	if((m = getmon(arg->ui)) == selmon)
 		return;
 	unfocus(selmon->sel, False); /* s/True/False/ fixes input focus issues
 					in gedit and anjuta */
@@ -814,6 +799,15 @@ getatomprop(Client *c, Atom prop) {
 		XFree(p);
 	}
 	return atom;
+}
+
+Monitor *
+getmon(unsigned int n) {
+	Monitor *m;
+
+	for(m = mons; n > 0 && m != NULL; n--)
+		m = m->next;
+	return m;
 }
 
 Bool
@@ -1551,7 +1545,7 @@ void
 tagmon(const Arg *arg) {
 	if(!selmon->sel || !mons->next)
 		return;
-	sendmon(selmon->sel, dirtomon(arg->i));
+	sendmon(selmon->sel, getmon(arg->ui));
 }
 
 void
