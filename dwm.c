@@ -674,16 +674,21 @@ drawbarnum(Monitor *m, unsigned int i) {
 	printf("%d\n", i);
 	for(i = 0; i < LENGTH(tags); i++) {
 		if(m->tagset[m->seltags] & 1 << i) {
-			printf("^fg(%s)^bg(%s)", normbgcolor, normfgcolor);
+			if (urg & 1 << i)
+				printf("^fg(%s)^bg(%s)", urgbgcolor, urgfgcolor);
+			else
+				printf("^fg(%s)^bg(%s)", normbgcolor, normfgcolor);
 			if(m == selmon && selmon->sel && selmon->sel->tags & 1 << i)
 				printf("(%s)^bg()^fg()", tags[i]);
 			else
 				printf(" %s ^bg()^fg()", tags[i]);
 		} else if(occ & 1 << i) {
+			if (urg & 1 << i)
+				printf("^fg(%s)^bg(%s)", urgfgcolor, urgbgcolor);
 			if(m == selmon && selmon->sel && selmon->sel->tags & 1 << i)
-				printf("(%s)", tags[i]);
+				printf("(%s)^fg()^bg()", tags[i]);
 			else
-				printf(" %s ", tags[i]);
+				printf(" %s ^fg()^bg()", tags[i]);
 		}
 	}
 	printf(" %s ", m->ltsymbol);
