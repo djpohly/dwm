@@ -85,8 +85,8 @@ static const char *nextcmd[]  = { "mpc", "next", NULL };
 static const char *colorcmd[] = { "/bin/sh", "-c",
 	"stint | awk '{hex=sprintf(\"#%02x%02x%02x\",$1,$2,$3);"
 		"printf \"^bg(%s)          ^bg() %d %d %d (%s) ^bg(%s)          ^bg()\\n\","
-		"hex,$1,$2,$3,hex,hex;fflush(stdout)}' | dzen2 -p 6",
-	NULL };
+		"hex,$1,$2,$3,hex,hex;fflush(stdout)}' | dzen2 -p 6 -xs $(($0+1))",
+	dmenumon, NULL };
 
 #include <X11/XF86keysym.h>
 
