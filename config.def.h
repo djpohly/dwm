@@ -27,6 +27,7 @@ static const Rule rules[] = {
 	/* class      instance    title       tags mask     isfloating   monitor */
 	{ "MPlayer",   NULL,       NULL,       0,            True,        -1 },
 	{ "mplayer2",  NULL,       NULL,       0,            True,        -1 },
+	{ "mpv",       NULL,       NULL,       0,            True,        -1 },
 	{ "qemu",      NULL,       NULL,       0,            True,        -1 },
 	{ "fontforge", NULL,       NULL,       0,            True,        -1 },
 	{ "Vncviewer", NULL,       NULL,       0,            True,        -1 },
