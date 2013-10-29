@@ -138,6 +138,13 @@ static Key keys[] = {
 	{ 0,                            XF86XK_AudioStop, spawn,   {.v = stopcmd} },
 	{ 0,                            XF86XK_AudioPrev, spawn,   {.v = prevcmd} },
 	{ 0,                            XF86XK_AudioNext, spawn,   {.v = nextcmd} },
+	{ MODKEY,                       XK_Next,   spawn,          {.v = lowervolcmd} },
+	{ MODKEY,                       XK_Prior,  spawn,          {.v = raisevolcmd} },
+	{ MODKEY|ShiftMask,             XK_Next,   spawn,          {.v = mutecmd} },
+	{ MODKEY,                       XK_Insert, spawn,          {.v = playcmd} },
+	{ MODKEY,                       XK_Delete, spawn,          {.v = stopcmd} },
+	{ MODKEY,                       XK_Home,   spawn,          {.v = prevcmd} },
+	{ MODKEY,                       XK_End,    spawn,          {.v = nextcmd} },
 };
 
 /* button definitions */
