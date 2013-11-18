@@ -88,6 +88,12 @@ static const char *colorcmd[] = { "/bin/sh", "-c",
 		"printf \"^bg(%s)          ^bg() %d %d %d (%s) ^bg(%s)          ^bg()\\n\","
 		"hex,$1,$2,$3,hex,hex;fflush(stdout)}' | dzen2 -p 6 -xs $(($0+1))",
 	dmenumon, NULL };
+static const char *todocmd[]  = { "/bin/sh", "-c",
+	"ls ~/.tasks | dmenu -m $0 -p TODO: | "
+		"(read list task && [ -n \"$list\" -a -n \"$task\" ] && "
+		" t --task-dir ~/.tasks --list \"$list\" \"$task\")",
+	dmenumon, NULL };
+
 
 #include <X11/XF86keysym.h>
 
@@ -99,6 +105,7 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
 	{ MODKEY,                       XK_space,  spawn,          {.v = lockcmd } },
 	{ MODKEY,                       XK_c,      spawn,          {.v = colorcmd } },
+	{ MODKEY|ControlMask,           XK_t,      spawn,          {.v = todocmd } },
 	{ MODKEY,                       XK_t,      focusstack,     {.i = +1 } },
 	{ MODKEY,                       XK_n,      focusstack,     {.i = -1 } },
 	{ MODKEY,                       XK_Tab,    focusstack,     {.i = +1 } },
