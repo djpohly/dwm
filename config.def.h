@@ -29,6 +29,7 @@ static const Rule rules[] = {
 	{ "mplayer2",  NULL,       NULL,       0,            True,        -1 },
 	{ "mpv",       NULL,       NULL,       0,            True,        -1 },
 	{ "qemu",      NULL,       NULL,       0,            True,        -1 },
+	{ "Qsynth",    NULL,       NULL,       0,            True,        -1 },
 	{ "fontforge", NULL,       NULL,       0,            True,        -1 },
 	{ "Vncviewer", NULL,       NULL,       0,            True,        -1 },
 	{ "StepMania", NULL,       NULL,       0,            True,        -1 },
