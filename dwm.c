@@ -212,6 +212,9 @@ static void tile(Monitor *);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
+static void touchbegin(XIDeviceEvent *ev);
+static void touchend(XIDeviceEvent *ev);
+static void touchupdate(XIDeviceEvent *ev);
 static void unfocus(Client *c, Bool setfocus);
 static void unmanage(Client *c, Bool destroyed);
 static void unmapnotify(XEvent *e);
@@ -848,10 +851,22 @@ focusstack(const Arg *arg) {
 void
 genericevent(XEvent *e) {
 	XGenericEventCookie *ev = &e->xcookie;
-	switch(ev->extension) {
-		default:
-			fprintf(stderr, "extension %d\n", ev->extension);
-			break;
+	if(ev->extension == xi_op) {
+		if (XGetEventData(dpy, ev)) {
+			XIDeviceEvent *de = ev->data;
+			switch(de->evtype) {
+				case XI_TouchBegin:
+					touchbegin(de);
+					break;
+				case XI_TouchUpdate:
+					touchupdate(de);
+					break;
+				case XI_TouchEnd:
+					touchend(de);
+					break;
+			}
+			XFreeEventData(dpy, ev);
+		}
 	}
 }
 
@@ -1730,6 +1745,21 @@ toggleview(const Arg *arg) {
 		focus(NULL);
 		arrange(selmon);
 	}
+}
+
+void
+touchbegin(XIDeviceEvent *ev) {
+	fprintf(stderr, "touch begin %d\n", ev->detail);
+}
+
+void
+touchend(XIDeviceEvent *ev) {
+	fprintf(stderr, "touch end %d\n", ev->detail);
+}
+
+void
+touchupdate(XIDeviceEvent *ev) {
+	fprintf(stderr, "touch update %d\n", ev->detail);
 }
 
 void
