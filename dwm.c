@@ -186,6 +186,7 @@ static void movemouse(const Arg *arg);
 static Client *nexttiled(Client *c);
 static void pop(Client *);
 static void propertynotify(XEvent *e);
+static void queryextensions(void);
 static Monitor *recttomon(int x, int y, int w, int h);
 static void resize(Client *c, int x, int y, int w, int h, Bool interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
@@ -235,6 +236,7 @@ static void zoom(const Arg *arg);
 static const char broken[] = "broken";
 static int screen;
 static int sw, sh;           /* X display screen geometry width, height */
+static int xi_op;            /* Opcode of the XInput extension */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static unsigned int runState = StRun;
@@ -496,7 +498,8 @@ cleanup(void) {
 		while(m->stack)
 			unmanage(m->stack, False);
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
-	XIUngrabTouchBegin(dpy, XIAllDevices, root, XIAnyModifier, NULL);
+	if (xi_op)
+		XIUngrabTouchBegin(dpy, XIAllDevices, root, XIAnyModifier, NULL);
 	while(mons)
 		cleanupmon(mons);
 	drw_cur_free(drw, cursor[CurNormal]);
@@ -968,6 +971,9 @@ grabkeys(void) {
 
 void
 grabtouch(void) {
+	if (!xi_op)
+		return;
+
 	unsigned char mask[XIMaskLen(XI_LASTEVENT)];
 	memset(mask, 0, sizeof(mask));
 	XISetMask(mask, XI_TouchBegin);
@@ -1234,6 +1240,17 @@ pop(Client *c) {
 	attach(c);
 	focus(c);
 	arrange(c->mon);
+}
+
+void
+queryextensions(void) {
+	int opcode, event, error;
+	if (XQueryExtension(dpy, "XInputExtension", &opcode, &event, &error)) {
+		int major = 2, minor = 2;
+		XIQueryVersion(dpy, &major, &minor);
+		if (major > 2 || (major == 2 && minor >= 2))
+			xi_op = opcode;
+	}
 }
 
 void
@@ -1581,6 +1598,7 @@ setup(void) {
 			PropModeReplace, (unsigned char *) netatom, NetLast);
 	XDeleteProperty(dpy, root, netatom[NetClientList]);
 	/* select for events */
+	queryextensions();
 	wa.cursor = cursor[CurNormal]->cursor;
 	wa.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|ButtonPressMask|PointerMotionMask
 	                |EnterWindowMask|LeaveWindowMask|StructureNotifyMask|PropertyChangeMask;
