@@ -84,6 +84,8 @@ static const char *playcmd[]  = { "mpc", "toggle", NULL };
 static const char *stopcmd[]  = { "mpc", "stop", NULL };
 static const char *prevcmd[]  = { "mpc", "prev", NULL };
 static const char *nextcmd[]  = { "mpc", "next", NULL };
+static const char *brightupcmd[] = { "xbacklight", "-inc", "10", "-time", "75", NULL };
+static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", NULL };
 static const char *colorcmd[] = { "/bin/sh", "-c",
 	"stint | awk '{hex=sprintf(\"#%02x%02x%02x\",$1,$2,$3);"
 		"printf \"^bg(%s)          ^bg() %d %d %d (%s) ^bg(%s)          ^bg()\\n\","
@@ -147,6 +149,8 @@ static Key keys[] = {
 	{ 0,                            XF86XK_AudioStop, spawn,   {.v = stopcmd} },
 	{ 0,                            XF86XK_AudioPrev, spawn,   {.v = prevcmd} },
 	{ 0,                            XF86XK_AudioNext, spawn,   {.v = nextcmd} },
+	{ 0,                            XF86XK_MonBrightnessUp, spawn, {.v = brightupcmd} },
+	{ 0,                            XF86XK_MonBrightnessDown, spawn, {.v = brightdncmd} },
 	{ MODKEY,                       XK_Next,   spawn,          {.v = lowervolcmd} },
 	{ MODKEY,                       XK_Prior,  spawn,          {.v = raisevolcmd} },
 	{ MODKEY|ShiftMask,             XK_Next,   spawn,          {.v = mutecmd} },
