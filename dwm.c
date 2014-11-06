@@ -36,6 +36,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/XInput2.h>
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
@@ -165,12 +166,14 @@ static void focus(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
+static void genericevent(XEvent *e);
 static Monitor *getmon(unsigned int n);
 static Bool getrootptr(int *x, int *y);
 static long getstate(Window w);
 static Bool gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, Bool focused);
 static void grabkeys(void);
+static void grabtouch(void);
 static void incnmaster(const Arg *arg);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
@@ -243,6 +246,7 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[DestroyNotify] = destroynotify,
 	[EnterNotify] = enternotify,
 	[FocusIn] = focusin,
+	[GenericEvent] = genericevent,
 	[KeyPress] = keypress,
 	[MappingNotify] = mappingnotify,
 	[MapRequest] = maprequest,
@@ -492,6 +496,7 @@ cleanup(void) {
 		while(m->stack)
 			unmanage(m->stack, False);
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
+	XIUngrabTouchBegin(dpy, XIAllDevices, root, XIAnyModifier, NULL);
 	while(mons)
 		cleanupmon(mons);
 	drw_cur_free(drw, cursor[CurNormal]);
@@ -837,6 +842,16 @@ focusstack(const Arg *arg) {
 	}
 }
 
+void
+genericevent(XEvent *e) {
+	XGenericEventCookie *ev = &e->xcookie;
+	switch(ev->extension) {
+		default:
+			fprintf(stderr, "extension %d\n", ev->extension);
+			break;
+	}
+}
+
 Atom
 getatomprop(Client *c, Atom prop) {
 	int di;
@@ -949,6 +964,27 @@ grabkeys(void) {
 					XGrabKey(dpy, code, keys[i].mod | modifiers[j], root,
 						 True, GrabModeAsync, GrabModeAsync);
 	}
+}
+
+void
+grabtouch(void) {
+	unsigned char mask[XIMaskLen(XI_LASTEVENT)];
+	memset(mask, 0, sizeof(mask));
+	XISetMask(mask, XI_TouchBegin);
+	XISetMask(mask, XI_TouchUpdate);
+	XISetMask(mask, XI_TouchEnd);
+
+	XIEventMask em = {
+		.mask = mask,
+		.mask_len = sizeof(mask),
+		.deviceid = XIAllDevices,
+	};
+
+	XIGrabModifiers mods = {
+		.modifiers = XIAnyModifier,
+	};
+
+	XIGrabTouchBegin(dpy, XIAllDevices, root, XINoOwnerEvents, &em, 1, &mods);
 }
 
 void
@@ -1551,6 +1587,7 @@ setup(void) {
 	XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
+	grabtouch();
 	focus(NULL);
 }
 

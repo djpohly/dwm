@@ -2,3 +2,6 @@
 		affecting the keyboard grab, see scrot -s for example)
 - add updategeom() hook for external tools like dzen
 - consider onscreenkeyboard hooks for tablet deployment
+- explicitly query right versions of XInput extension
+- what should grab touches and where
+- how to parse different touch gestures?
