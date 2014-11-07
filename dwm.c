@@ -171,6 +171,7 @@ static Monitor *getmon(unsigned int n);
 static Bool getrootptr(int *x, int *y);
 static long getstate(Window w);
 static Bool gettextprop(Window w, Atom atom, char *text, unsigned int size);
+static int gettouchdevice(void);
 static void grabbuttons(Client *c, Bool focused);
 static void grabkeys(void);
 static void grabtouch(void);
@@ -945,6 +946,37 @@ gettextprop(Window w, Atom atom, char *text, unsigned int size) {
 	return True;
 }
 
+int
+gettouchdevice(void) {
+	if (!xi_op)
+		return -1;
+
+	XIDeviceInfo *di;
+	int ndev;
+	di = XIQueryDevice(dpy, XIAllDevices, &ndev);
+	if (!di)
+		return -1;
+
+	int dev = -1;
+	int i;
+	for (i = 0; i < ndev; i++) {
+		int class;
+		for (class = 0; class < di[i].num_classes; class++) {
+			XITouchClassInfo *tci =
+				(XITouchClassInfo *) di[i].classes[class];
+			if (tci->type == XITouchClass &&
+					tci->mode == XIDirectTouch) {
+				dev = di[i].deviceid;
+				goto found;
+			}
+		}
+	}
+
+found:
+	XIFreeDeviceInfo(di);
+	return dev;
+}
+
 void
 grabbuttons(Client *c, Bool focused) {
 	updatenumlockmask();
@@ -988,6 +1020,9 @@ void
 grabtouch(void) {
 	if (!xi_op)
 		return;
+	int dev = gettouchdevice();
+	if (dev < 0)
+		return;
 
 	unsigned char mask[XIMaskLen(XI_LASTEVENT)];
 	memset(mask, 0, sizeof(mask));
@@ -998,14 +1033,14 @@ grabtouch(void) {
 	XIEventMask em = {
 		.mask = mask,
 		.mask_len = sizeof(mask),
-		.deviceid = XIAllDevices,
+		.deviceid = dev,
 	};
 
 	XIGrabModifiers mods = {
 		.modifiers = XIAnyModifier,
 	};
 
-	XIGrabTouchBegin(dpy, XIAllDevices, root, XINoOwnerEvents, &em, 1, &mods);
+	XIGrabTouchBegin(dpy, dev, root, XINoOwnerEvents, &em, 1, &mods);
 }
 
 void
@@ -1755,6 +1790,7 @@ touchbegin(XIDeviceEvent *ev) {
 void
 touchend(XIDeviceEvent *ev) {
 	fprintf(stderr, "touch end %d\n", ev->detail);
+	XIAllowEvents(dpy, ev->sourceid, XIRejectTouch, CurrentTime);
 }
 
 void
