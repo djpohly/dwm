@@ -244,6 +244,10 @@ static int xi_op;            /* Opcode of the XInput extension */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static unsigned int runState = StRun;
+static int taps = 0;
+static int touches = 0;
+static int max_touches = 0;
+static Time touch_time = 0, last_touch_time = 0;
 static void (*handler[LASTEvent]) (XEvent *) = {
 	[ButtonPress] = buttonpress,
 	[ClientMessage] = clientmessage,
@@ -1784,18 +1788,31 @@ toggleview(const Arg *arg) {
 
 void
 touchbegin(XIDeviceEvent *ev) {
-	fprintf(stderr, "touch begin %d\n", ev->detail);
+	if (touches++ == 0) {
+		last_touch_time = touch_time;
+		touch_time = ev->time;
+	}
+	if (touches > max_touches)
+		max_touches = touches;
 }
 
 void
 touchend(XIDeviceEvent *ev) {
-	fprintf(stderr, "touch end %d\n", ev->detail);
-	XIAllowEvents(dpy, ev->sourceid, XIRejectTouch, CurrentTime);
+	static const char *gkoscmd[] = {"/home/djpohly/bin/gkos", NULL};
+	static const Arg gkosarg = {.v = gkoscmd};
+	if (--touches == 0) {
+		if (max_touches == 1) {
+			if (ev->time - last_touch_time > 250)
+				taps = 1;
+			else if (++taps == 3)
+				spawn(&gkosarg);
+		}
+		max_touches = 0;
+	}
 }
 
 void
 touchupdate(XIDeviceEvent *ev) {
-	fprintf(stderr, "touch update %d\n", ev->detail);
 }
 
 void
