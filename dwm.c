@@ -506,8 +506,10 @@ cleanup(void) {
 		while(m->stack)
 			unmanage(m->stack, False);
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
+	/* XXX Breaks with an internal BadLength error (?!)
 	if (xi_op)
 		XIUngrabTouchBegin(dpy, XIAllDevices, root, XIAnyModifier, NULL);
+	*/
 	while(mons)
 		cleanupmon(mons);
 	drw_cur_free(drw, cursor[CurNormal]);
