@@ -84,6 +84,8 @@ static const char *playcmd[]  = { "mpc", "toggle", NULL };
 static const char *stopcmd[]  = { "mpc", "stop", NULL };
 static const char *prevcmd[]  = { "mpc", "prev", NULL };
 static const char *nextcmd[]  = { "mpc", "next", NULL };
+static const char *ffcmd[]  = { "mpc", "seek", "+20", NULL };
+static const char *rewcmd[]  = { "mpc", "seek", "-20", NULL };
 static const char *brightupcmd[] = { "xbacklight", "-inc", "10", "-time", "75", NULL };
 static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", NULL };
 static const char *colorcmd[] = { "/bin/sh", "-c",
@@ -158,6 +160,8 @@ static Key keys[] = {
 	{ MODKEY,                       XK_Delete, spawn,          {.v = stopcmd} },
 	{ MODKEY,                       XK_Home,   spawn,          {.v = prevcmd} },
 	{ MODKEY,                       XK_End,    spawn,          {.v = nextcmd} },
+	{ MODKEY,                       XK_Left,   spawn,          {.v = rewcmd} },
+	{ MODKEY,                       XK_Right,  spawn,          {.v = ffcmd} },
 };
 
 /* button definitions */
