@@ -6,7 +6,7 @@ include config.mk
 SRC = drw.c dwm.c util.c
 OBJ = ${SRC:.c=.o}
 
-all: options dwm
+all: options dwm dwmkeys
 
 options:
 	@echo dwm build options:
@@ -20,6 +20,8 @@ options:
 
 ${OBJ}: config.h config.mk
 
+dwmkeys.o: dwmkeys.h
+
 config.h:
 	@echo creating $@ from config.def.h
 	@cp config.def.h $@
@@ -30,13 +32,13 @@ dwm: ${OBJ}
 
 clean:
 	@echo cleaning
-	@rm -f dwm ${OBJ} dwm-${VERSION}.tar.gz
+	@rm -f dwm dwmkeys ${OBJ} dwmkeys.o dwm-${VERSION}.tar.gz
 
 dist: clean
 	@echo creating dist tarball
 	@mkdir -p dwm-${VERSION}
 	@cp -R LICENSE Makefile README config.def.h config.mk \
-		dwm.1 ${SRC} dwm-${VERSION}
+		dwm.1 ${SRC} dwmkeys.c dwm-${VERSION}
 	@tar -cf dwm-${VERSION}.tar dwm-${VERSION}
 	@gzip dwm-${VERSION}.tar
 	@rm -rf dwm-${VERSION}
@@ -44,8 +46,8 @@ dist: clean
 install: all
 	@echo installing executable file to ${DESTDIR}${PREFIX}/bin
 	@mkdir -p ${DESTDIR}${PREFIX}/bin
-	@cp -f dwm ${DESTDIR}${PREFIX}/bin
-	@chmod 755 ${DESTDIR}${PREFIX}/bin/dwm
+	@cp -f dwm dwmkeys ${DESTDIR}${PREFIX}/bin
+	@chmod 755 ${DESTDIR}${PREFIX}/bin/dwm ${DESTDIR}${PREFIX}/bin/dwmkeys
 	@echo installing manual page to ${DESTDIR}${MANPREFIX}/man1
 	@mkdir -p ${DESTDIR}${MANPREFIX}/man1
 	@sed "s/VERSION/${VERSION}/g" < dwm.1 > ${DESTDIR}${MANPREFIX}/man1/dwm.1
@@ -53,7 +55,7 @@ install: all
 
 uninstall:
 	@echo removing executable file from ${DESTDIR}${PREFIX}/bin
-	@rm -f ${DESTDIR}${PREFIX}/bin/dwm
+	@rm -f ${DESTDIR}${PREFIX}/bin/dwm ${DESTDIR}${PREFIX}/bin/dwmkeys
 	@echo removing manual page from ${DESTDIR}${MANPREFIX}/man1
 	@rm -f ${DESTDIR}${MANPREFIX}/man1/dwm.1
 
