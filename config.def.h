@@ -172,13 +172,9 @@ static Button buttons[] = {
 	{ ClkClientWin,         MODKEY,         Button3,        resizemouse,    {0} },
 };
 
-static const char *dwmfifo = "/tmp/dwm.fifo";
 static Command commands[] = {
 	{ "restart",         state,          {.ui = StRestart} },
 	{ "exit",            state,          {.ui = StShutdown} },
-	{ "dmenu",           spawn,          {.v = dmenucmd} },
-	{ "term",            spawn,          {.v = termcmd} },
-	{ "togglebar",       togglebar,      {0} },
 	{ "focusstack+",     focusstack,     {.i = +1} },
 	{ "focusstack-",     focusstack,     {.i = -1} },
 	{ "push+",           pushdown,       {.i = +1} },
