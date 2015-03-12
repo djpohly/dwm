@@ -6,15 +6,15 @@
 /* commands */
 static const char *termcmd[]  = { "/usr/bin/env", "SHLVL=0", "urxvtc", NULL };
 static const char *lockcmd[]  = { "xscreensaver-command", "-lock", NULL };
-static const char *lowervolcmd[]  = { "amixer", "sset", "Master", "3%-", NULL };
-static const char *raisevolcmd[]  = { "amixer", "sset", "Master", "3%+", NULL };
-static const char *mutecmd[]  = { "amixer", "sset", "Master", "toggle", NULL };
-static const char *playcmd[]  = { "mpc", "toggle", NULL };
-static const char *stopcmd[]  = { "mpc", "stop", NULL };
-static const char *prevcmd[]  = { "mpc", "prev", NULL };
-static const char *nextcmd[]  = { "mpc", "next", NULL };
-static const char *ffcmd[]  = { "mpc", "seek", "+20", NULL };
-static const char *rewcmd[]  = { "mpc", "seek", "-20", NULL };
+static const char *lowervolcmd[]  = { "amixer", "-q", "sset", "Master", "3%-", NULL };
+static const char *raisevolcmd[]  = { "amixer", "-q", "sset", "Master", "3%+", NULL };
+static const char *mutecmd[]  = { "amixer", "-q", "sset", "Master", "toggle", NULL };
+static const char *playcmd[]  = { "mpc", "-q", "toggle", NULL };
+static const char *stopcmd[]  = { "mpc", "-q", "stop", NULL };
+static const char *prevcmd[]  = { "mpc", "-q", "prev", NULL };
+static const char *nextcmd[]  = { "mpc", "-q", "next", NULL };
+static const char *ffcmd[]  = { "mpc", "-q", "seek", "+20", NULL };
+static const char *rewcmd[]  = { "mpc", "-q", "seek", "-20", NULL };
 static const char *brightupcmd[] = { "xbacklight", "-inc", "10", "-time", "75", NULL };
 static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", NULL };
 
