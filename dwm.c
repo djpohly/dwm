@@ -707,9 +707,11 @@ dispatchcmd(void)
 	ssize_t n;
 
 	/* XXX Check for newline in buffer! */
-	n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
+	do {
+		n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
+	} while (n == -1 && errno == EINTR);
 	if (n == -1)
-		die("Failed to read from stdin\n");
+		perror("dwm: read(stdin)");
 	buf[n-1] = '\0';
 	for (i = 0; i < LENGTH(commands); i++) {
 		if (strcmp(commands[i].name, buf) == 0) {
