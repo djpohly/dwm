@@ -24,14 +24,6 @@ static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", 
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	/*
-	{ MODKEY,                       XK_r,      spawn,          dmenucmd },
-	{ MODKEY|ShiftMask,             XK_r,      spawn,          rootcmd },
-	{ MODKEY|ControlMask,           XK_r,      spawn,          runtermcmd },
-	{ MODKEY,                       XK_c,      spawn,          colorcmd },
-	{ MODKEY|ControlMask,           XK_t,      spawn,          todocmd },
-	*/
-
 	{ MODKEY|ShiftMask,             XK_Return, spawn,          termcmd },
 	{ MODKEY,                       XK_space,  spawn,          lockcmd },
 	{ 0,              XF86XK_AudioLowerVolume, spawn,          lowervolcmd},
@@ -53,17 +45,14 @@ static Key keys[] = {
 	{ MODKEY,                       XK_Left,   spawn,          rewcmd},
 	{ MODKEY,                       XK_Right,  spawn,          ffcmd},
 
-	/*
 	{ MODKEY,                    XK_BackSpace, print,          "restart" },
 	{ MODKEY|ShiftMask,          XK_BackSpace, print,          "exit" },
-	*/
 	{ MODKEY,                       XK_t,      print,          "focusstack+" },
 	{ MODKEY,                       XK_n,      print,          "focusstack-" },
-	/*
 	{ MODKEY,                       XK_Tab,    print,          "focusstack+" },
 	{ MODKEY|ShiftMask,             XK_Tab,    print,          "focusstack-" },
-	{ MODKEY|ShiftMask,             XK_t,      print,          "pushdown" },
-	{ MODKEY|ShiftMask,             XK_n,      print,          "pushup" },
+	{ MODKEY|ShiftMask,             XK_t,      print,          "push+" },
+	{ MODKEY|ShiftMask,             XK_n,      print,          "push-" },
 	{ MODKEY|ShiftMask,             XK_h,      print,          "incnmaster+" },
 	{ MODKEY|ShiftMask,             XK_s,      print,          "incnmaster-" },
 	{ MODKEY,                       XK_h,      print,          "setmfact-" },
@@ -87,14 +76,13 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,             KEY,       print,          "tag" #TAG}, \
 	{ MODKEY|ControlMask|ShiftMask, KEY,       print,          "toggletag" #TAG}
 
-	TAGKEYS(XK_1, 0),
-	TAGKEYS(XK_2, 1),
-	TAGKEYS(XK_3, 2),
-	TAGKEYS(XK_4, 3),
-	TAGKEYS(XK_5, 4),
-	TAGKEYS(XK_6, 5),
-	TAGKEYS(XK_7, 6),
-	TAGKEYS(XK_8, 7),
-	TAGKEYS(XK_9, 8),
-	*/
+	TAGKEYS(XK_1, 1),
+	TAGKEYS(XK_2, 2),
+	TAGKEYS(XK_3, 3),
+	TAGKEYS(XK_4, 4),
+	TAGKEYS(XK_5, 5),
+	TAGKEYS(XK_6, 6),
+	TAGKEYS(XK_7, 7),
+	TAGKEYS(XK_8, 8),
+	TAGKEYS(XK_9, 9),
 };

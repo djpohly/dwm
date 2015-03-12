@@ -74,19 +74,6 @@ static const char *runtermcmd[] = { "/bin/sh", "-c",
 	"cmd=`dmenu_path | tdmenu -m $0` && "
 	"SHLVL=0 exec urxvtc -title \"$cmd\" -e \"${SHELL:-/bin/sh}\" -c \"$cmd\"",
 	dmenumon, NULL };
-static const char *termcmd[]  = { "/usr/bin/env", "SHLVL=0", "urxvtc", NULL };
-static const char *lockcmd[]  = { "xscreensaver-command", "-lock", NULL };
-static const char *lowervolcmd[]  = { "amixer", "sset", "Master", "3%-", NULL };
-static const char *raisevolcmd[]  = { "amixer", "sset", "Master", "3%+", NULL };
-static const char *mutecmd[]  = { "amixer", "sset", "Master", "toggle", NULL };
-static const char *playcmd[]  = { "mpc", "toggle", NULL };
-static const char *stopcmd[]  = { "mpc", "stop", NULL };
-static const char *prevcmd[]  = { "mpc", "prev", NULL };
-static const char *nextcmd[]  = { "mpc", "next", NULL };
-static const char *ffcmd[]  = { "mpc", "seek", "+20", NULL };
-static const char *rewcmd[]  = { "mpc", "seek", "-20", NULL };
-static const char *brightupcmd[] = { "xbacklight", "-inc", "10", "-time", "75", NULL };
-static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", NULL };
 static const char *colorcmd[] = { "/bin/sh", "-c",
 	"stint | awk '{hex=sprintf(\"#%02x%02x%02x\",$1,$2,$3);"
 		"printf \"^bg(%s)          ^bg() %d %d %d (%s) ^bg(%s)          ^bg()\\n\","
@@ -106,61 +93,8 @@ static Key keys[] = {
 	{ MODKEY,                       XK_r,      spawn,          {.v = dmenucmd } },
 	{ MODKEY|ShiftMask,             XK_r,      spawn,          {.v = rootcmd } },
 	{ MODKEY|ControlMask,           XK_r,      spawn,          {.v = runtermcmd } },
-	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
-	{ MODKEY,                       XK_space,  spawn,          {.v = lockcmd } },
 	{ MODKEY,                       XK_c,      spawn,          {.v = colorcmd } },
 	{ MODKEY|ControlMask,           XK_t,      spawn,          {.v = todocmd } },
-	{ MODKEY,                       XK_t,      focusstack,     {.i = +1 } },
-	{ MODKEY,                       XK_n,      focusstack,     {.i = -1 } },
-	{ MODKEY,                       XK_Tab,    focusstack,     {.i = +1 } },
-	{ MODKEY|ShiftMask,             XK_Tab,    focusstack,     {.i = -1 } },
-	{ MODKEY|ShiftMask,             XK_t,      pushdown,       {.i = +1 } },
-	{ MODKEY|ShiftMask,             XK_n,      pushup,         {.i = -1 } },
-	{ MODKEY|ShiftMask,             XK_h,      incnmaster,     {.i = +1 } },
-	{ MODKEY|ShiftMask,             XK_s,      incnmaster,     {.i = -1 } },
-	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
-	{ MODKEY,                       XK_s,      setmfact,       {.f = +0.05} },
-	{ MODKEY,                       XK_Return, zoom,           {0} },
-	{ MODKEY,                       XK_Escape, killclient,     {0} },
-	{ MODKEY|ShiftMask,             XK_l,      setlayout,      {.v = &layouts[0]} },
-	{ MODKEY,                       XK_l,      setlayout,      {.v = &layouts[1]} },
-	{ MODKEY|ShiftMask,             XK_f,      setlayout,      {.v = &layouts[2]} },
-	{ MODKEY,                       XK_f,      togglefloating, {0} },
-	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
-	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
-	{ MODKEY,                       XK_apostrophe,  focusmon,  {.ui = 0 } },
-	{ MODKEY,                       XK_comma,  focusmon,       {.ui = 1 } },
-	{ MODKEY|ShiftMask,             XK_apostrophe,  tagmon,    {.ui = 0 } },
-	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.ui = 1 } },
-	TAGKEYS(                        XK_1,                      0)
-	TAGKEYS(                        XK_2,                      1)
-	TAGKEYS(                        XK_3,                      2)
-	TAGKEYS(                        XK_4,                      3)
-	TAGKEYS(                        XK_5,                      4)
-	TAGKEYS(                        XK_6,                      5)
-	TAGKEYS(                        XK_7,                      6)
-	TAGKEYS(                        XK_8,                      7)
-	TAGKEYS(                        XK_9,                      8)
-	{ MODKEY,                       XK_BackSpace,     state,   {.ui = StRestart} },
-	{ MODKEY|ShiftMask,             XK_BackSpace,     state,   {.ui = StShutdown} },
-	{ 0,                            XF86XK_AudioLowerVolume, spawn, {.v = lowervolcmd} },
-	{ 0,                            XF86XK_AudioRaiseVolume, spawn, {.v = raisevolcmd} },
-	{ 0,                            XF86XK_AudioMute, spawn,   {.v = mutecmd} },
-	{ 0,                            XF86XK_AudioPlay, spawn,   {.v = playcmd} },
-	{ 0,                            XF86XK_AudioStop, spawn,   {.v = stopcmd} },
-	{ 0,                            XF86XK_AudioPrev, spawn,   {.v = prevcmd} },
-	{ 0,                            XF86XK_AudioNext, spawn,   {.v = nextcmd} },
-	{ 0,                            XF86XK_MonBrightnessUp, spawn, {.v = brightupcmd} },
-	{ 0,                            XF86XK_MonBrightnessDown, spawn, {.v = brightdncmd} },
-	{ MODKEY,                       XK_Next,   spawn,          {.v = lowervolcmd} },
-	{ MODKEY,                       XK_Prior,  spawn,          {.v = raisevolcmd} },
-	{ MODKEY|ShiftMask,             XK_Next,   spawn,          {.v = mutecmd} },
-	{ MODKEY,                       XK_Insert, spawn,          {.v = playcmd} },
-	{ MODKEY,                       XK_Delete, spawn,          {.v = stopcmd} },
-	{ MODKEY,                       XK_Home,   spawn,          {.v = prevcmd} },
-	{ MODKEY,                       XK_End,    spawn,          {.v = nextcmd} },
-	{ MODKEY,                       XK_Left,   spawn,          {.v = rewcmd} },
-	{ MODKEY,                       XK_Right,  spawn,          {.v = ffcmd} },
 };
 
 /* button definitions */
