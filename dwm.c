@@ -21,6 +21,7 @@
  * To understand everything else, start reading main().
  */
 #include <errno.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <stdarg.h>
 #include <signal.h>
@@ -28,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/select.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <X11/cursorfont.h>
@@ -136,6 +139,12 @@ typedef struct {
 	int monitor;
 } Rule;
 
+typedef struct {
+	const char *name;
+	void (*func)(const Arg *arg);
+	const Arg arg;
+} Command;
+
 /* function declarations */
 static void applyrules(Client *c);
 static Bool applysizehints(Client *c, int *x, int *y, int *w, int *h, Bool interact);
@@ -157,10 +166,12 @@ static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
 static void detachstack(Client *c);
+static void dispatchcmd(void);
 static void drawbar(Monitor *m);
 static void drawbarnum(Monitor *m, unsigned int i);
 static void drawbars(void);
 static void enternotify(XEvent *e);
+static Bool evpredicate();
 static void focus(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
@@ -689,6 +700,26 @@ detachstack(Client *c) {
 }
 
 void
+dispatchcmd(void)
+{
+	int i;
+	char buf[BUFSIZ];
+	ssize_t n;
+
+	/* XXX Check for newline in buffer! */
+	n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
+	if (n == -1)
+		die("Failed to read from stdin\n");
+	buf[n-1] = '\0';
+	for (i = 0; i < LENGTH(commands); i++) {
+		if (strcmp(commands[i].name, buf) == 0) {
+			commands[i].func(&commands[i].arg);
+			break;
+		}
+	}
+}
+
+void
 drawbar(Monitor *m) {
 	unsigned int i;
 	Monitor *x;
@@ -760,6 +791,12 @@ enternotify(XEvent *e) {
 	else if(!c || c == selmon->sel)
 		return;
 	focus(c);
+}
+
+Bool
+evpredicate()
+{
+	return True;
 }
 
 void
@@ -1356,11 +1393,30 @@ restack(Monitor *m) {
 void
 run(void) {
 	XEvent ev;
+	fd_set rfds;
+	int n;
+	int dpyfd, maxfd;
 	/* main event loop */
 	XSync(dpy, False);
-	while(runState == StRun && !XNextEvent(dpy, &ev))
-		if(handler[ev.type])
-			handler[ev.type](&ev); /* call handler */
+	dpyfd = ConnectionNumber(dpy);
+	maxfd = STDIN_FILENO;
+	if (dpyfd > maxfd)
+		maxfd = dpyfd;
+	maxfd++;
+	while (runState == StRun) {
+		FD_ZERO(&rfds);
+		FD_SET(STDIN_FILENO, &rfds);
+		FD_SET(dpyfd, &rfds);
+		n = select(maxfd, &rfds, NULL, NULL, NULL);
+		if (n > 0) {
+			if (FD_ISSET(STDIN_FILENO, &rfds))
+				dispatchcmd();
+			if (FD_ISSET(dpyfd, &rfds))
+				while (XCheckIfEvent(dpy, &ev, evpredicate, NULL))
+					if (handler[ev.type])
+						handler[ev.type](&ev); /* call handler */
+		}
+	}
 }
 
 void
