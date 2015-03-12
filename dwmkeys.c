@@ -77,7 +77,7 @@ keypress(XEvent *e) {
 		if(keysym == keys[i].keysym
 		&& CLEANMASK(keys[i].mod) == CLEANMASK(ev->state)
 		&& keys[i].func)
-			keys[i].func(&(keys[i].arg));
+			keys[i].func(keys[i].arg);
 }
 
 void
@@ -91,7 +91,7 @@ mappingnotify(XEvent *e) {
 
 void
 print(const void *arg) {
-	printf("%s\n", *(char **) arg);
+	printf("%s\n", (char *) arg);
 }
 
 void
@@ -127,8 +127,8 @@ spawn(const void *arg) {
 			close(ConnectionNumber(dpy));
 		dup2(STDERR_FILENO, STDOUT_FILENO);
 		setsid();
-		execvp((*(char ***)arg)[0], *(char ***)arg);
-		fprintf(stderr, "hotkeys: execvp %s", (*(char ***)arg)[0]);
+		execvp(((char **)arg)[0], (char **)arg);
+		fprintf(stderr, "hotkeys: execvp %s", ((char **)arg)[0]);
 		perror(" failed");
 		exit(EXIT_SUCCESS);
 	}
