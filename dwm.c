@@ -702,23 +702,45 @@ detachstack(Client *c) {
 void
 dispatchcmd(void)
 {
+	static char buf[BUFSIZ];
+	static ssize_t n = 0;
+	static int drop = 0;
 	int i;
-	char buf[BUFSIZ];
-	ssize_t n;
+	ssize_t ret;
+	char *end;
 
-	/* XXX Check for newline in buffer! */
 	do {
-		n = read(STDIN_FILENO, buf, sizeof(buf) - 1);
-	} while (n == -1 && errno == EINTR);
-	if (n == -1)
+		ret = read(STDIN_FILENO, buf + n, sizeof(buf) - n);
+	} while (ret == -1 && errno == EINTR);
+	if (ret == -1)
 		perror("dwm: read(stdin)");
-	buf[n-1] = '\0';
-	for (i = 0; i < LENGTH(commands); i++) {
-		if (strcmp(commands[i].name, buf) == 0) {
-			commands[i].func(&commands[i].arg);
-			break;
+	n += ret;
+
+	while ((end = memchr(buf, '\n', n))) {
+		if (!drop) {
+			*end = '\0';
+			for (i = 0; i < LENGTH(commands); i++) {
+				if (strcmp(commands[i].name, buf) == 0) {
+					commands[i].func(&commands[i].arg);
+					break;
+				}
+			}
+			if (i >= LENGTH(commands))
+				fprintf(stderr, "unrecognized command: %s\n", buf);
 		}
+		/* Remove command from buffer, sliding any remaining up */
+		drop = 0;
+		n -= end - buf + 1;
+		if (n)
+			memmove(buf, end + 1, n);
 	}
+	if (!drop && n >= sizeof(buf)) {
+		/* Buffer full and no newline - command too long */
+		fprintf(stderr, "command too long\n");
+		drop = 1;
+	}
+	if (drop)
+		n = 0;
 }
 
 void
