@@ -174,6 +174,8 @@ static Button buttons[] = {
 
 static const char *dwmfifo = "/tmp/dwm.fifo";
 static Command commands[] = {
+	{ "restart",         state,          {.ui = StRestart} },
+	{ "exit",            state,          {.ui = StShutdown} },
 	{ "dmenu",           spawn,          {.v = dmenucmd} },
 	{ "term",            spawn,          {.v = termcmd} },
 	{ "togglebar",       togglebar,      {0} },
