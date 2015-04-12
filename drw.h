@@ -1,7 +1,9 @@
 /* See LICENSE file for copyright and license details. */
+#define DRW_FONT_CACHE_SIZE 32
 
 typedef struct {
-	unsigned long rgb;
+	unsigned long pix;
+	XftColor rgb;
 } Clr;
 
 typedef struct {
