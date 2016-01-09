@@ -1,7 +1,9 @@
 /* See LICENSE file for copyright and license details. */
+#define DRW_FONT_CACHE_SIZE 32
 
 typedef struct {
-	unsigned long rgb;
+	unsigned long pix;
+	XftColor rgb;
 } Clr;
 
 typedef struct {
@@ -26,16 +28,16 @@ typedef struct {
 } Extnts;
 
 /* Drawable abstraction */
-Drw *drw_create(Display *dpy, int screen);
-void drw_free(Drw *drw);
+Drw *drw_create(Display *, int );
+void drw_free(Drw *);
 
 /* Colour abstraction */
-Clr *drw_clr_create(Drw *drw, const char *clrname);
-void drw_clr_free(Clr *clr);
+Clr *drw_clr_create(Drw *, const char *);
+void drw_clr_free(Clr *);
 
 /* Cursor abstraction */
-Cur *drw_cur_create(Drw *drw, int shape);
-void drw_cur_free(Drw *drw, Cur *cursor);
+Cur *drw_cur_create(Drw *, int);
+void drw_cur_free(Drw *, Cur *);
 
 /* Drawing context manipulation */
-void drw_setscheme(Drw *drw, ClrScheme *scheme);
+void drw_setscheme(Drw *, ClrScheme *);

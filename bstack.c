@@ -10,7 +10,7 @@ bstack(Monitor *m) {
 	/* master */
 	c = nexttiled(m->clients);
 	mh = m->mfact * m->wh;
-	resize(c, m->wx, m->wy, m->ww - 2 * c->bw, (n == 1 ? m->wh : mh) - 2 * c->bw, False);
+	resize(c, m->wx, m->wy, m->ww - 2 * c->bw, (n == 1 ? m->wh : mh) - 2 * c->bw, 0);
 	if(--n == 0)
 		return;
 	/* tile stack */
@@ -22,7 +22,7 @@ bstack(Monitor *m) {
 		w = m->ww;
 	for(i = 0, c = nexttiled(c->next); c; c = nexttiled(c->next), i++) {
 		resize(c, x, y, /* remainder */ ((i + 1 == n)
-		       ? m->wx + m->ww - x - 2 * c->bw : w - 2 * c->bw), h - 2 * c->bw, False);
+		       ? m->wx + m->ww - x - 2 * c->bw : w - 2 * c->bw), h - 2 * c->bw, 0);
 		if(w != m->ww)
 			x = c->x + WIDTH(c);
 	}

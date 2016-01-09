@@ -10,7 +10,7 @@ bstackhoriz(Monitor *m) {
 	/* master */
 	c = nexttiled(m->clients);
 	mh = m->mfact * m->wh;
-	resize(c, m->wx, m->wy, m->ww - 2 * c->bw, (n == 1 ? m->wh : mh) - 2 * c->bw, False);
+	resize(c, m->wx, m->wy, m->ww - 2 * c->bw, (n == 1 ? m->wh : mh) - 2 * c->bw, 0);
 	if(--n == 0)
 		return;
 	/* tile stack */
@@ -23,7 +23,7 @@ bstackhoriz(Monitor *m) {
 		h = m->wh;
 	for(i = 0, c = nexttiled(c->next); c; c = nexttiled(c->next), i++) {
 		resize(c, x, y, w - 2 * c->bw, /* remainder */ ((i + 1 == n)
-		       ? m->wy + m->wh - y - 2 * c->bw : h - 2 * c->bw), False);
+		       ? m->wy + m->wh - y - 2 * c->bw : h - 2 * c->bw), 0);
 		if(h != m->wh)
 			y = c->y + HEIGHT(c);
 	}

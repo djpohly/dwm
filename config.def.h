@@ -3,7 +3,7 @@
 #include "push.h"
 
 /* appearance */
-static const char font[]            = "-*-terminus-medium-r-*-*-16-*-*-*-*-*-*-*";
+static const char dmenufont[]       = "-*-terminus-medium-r-*-*-16-*-*-*-*-*-*-*";
 static const char normbordercolor[] = "#2e3435";
 static const char normbgcolor[]     = "#000000";
 static const char normfgcolor[]     = "#babdb6";
@@ -25,21 +25,21 @@ static const Rule rules[] = {
 	 *	WM_NAME(STRING) = title
 	 */
 	/* class      instance    title       tags mask     isfloating   monitor */
-	{ "MPlayer",   NULL,       NULL,       0,            True,        -1 },
-	{ "mplayer2",  NULL,       NULL,       0,            True,        -1 },
-	{ "mpv",       NULL,       NULL,       0,            True,        -1 },
-	{ "qemu",      NULL,       NULL,       0,            True,        -1 },
-	{ "Qsynth",    NULL,       NULL,       0,            True,        -1 },
-	{ "fontforge", NULL,       NULL,       0,            True,        -1 },
-	{ "Vncviewer", NULL,       NULL,       0,            True,        -1 },
-	{ "StepMania", NULL,       NULL,       0,            True,        -1 },
-	{ "Dolphin-emu", NULL,     NULL,       0,            True,        -1 },
+	{ "MPlayer",   NULL,       NULL,       0,            1,        -1 },
+	{ "mplayer2",  NULL,       NULL,       0,            1,        -1 },
+	{ "mpv",       NULL,       NULL,       0,            1,        -1 },
+	{ "qemu",      NULL,       NULL,       0,            1,        -1 },
+	{ "Qsynth",    NULL,       NULL,       0,            1,        -1 },
+	{ "fontforge", NULL,       NULL,       0,            1,        -1 },
+	{ "Vncviewer", NULL,       NULL,       0,            1,        -1 },
+	{ "StepMania", NULL,       NULL,       0,            1,        -1 },
+	{ "Dolphin-emu", NULL,     NULL,       0,            1,        -1 },
 };
 
 /* layout(s) */
-static const float mfact      = 0.5;  /* factor of master area size [0.05..0.95] */
-static const int nmaster      = 1;    /* number of clients in master area */
-static const Bool resizehints = False; /* True means respect size hints in tiled resizals */
+static const float mfact     = 0.5; /* factor of master area size [0.05..0.95] */
+static const int nmaster     = 1;   /* number of clients in master area */
+static const int resizehints = 0;   /* 1 means respect size hints in tiled resizals */
 
 #include "bstack.c"
 static const Layout layouts[] = {
