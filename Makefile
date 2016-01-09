@@ -37,8 +37,8 @@ clean:
 dist: clean
 	@echo creating dist tarball
 	@mkdir -p dwm-${VERSION}
-	@cp -R LICENSE Makefile README config.def.h config.mk \
-		dwm.1 ${SRC} dwmkeys.c dwm-${VERSION}
+	@cp -R LICENSE TODO BUGS Makefile README config.def.h config.mk \
+		dwm.1 drw.h util.h ${SRC} dwm.png dwmkeys.c transient.c dwm-${VERSION}
 	@tar -cf dwm-${VERSION}.tar dwm-${VERSION}
 	@gzip dwm-${VERSION}.tar
 	@rm -rf dwm-${VERSION}
