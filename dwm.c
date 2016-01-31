@@ -95,7 +95,7 @@ struct Client {
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
 	int bw, oldbw;
 	unsigned int tags;
-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+	int isfixed, isfloating, isheld, isurgent, neverfocus, oldstate, isfullscreen;
 	Client *next;
 	Client *snext;
 	Monitor *mon;
@@ -290,6 +290,7 @@ applyrules(Client *c)
 
 	/* rule matching */
 	c->isfloating = 0;
+	c->isheld = 0;
 	c->tags = 0;
 	XGetClassHint(dpy, c->win, &ch);
 	class    = ch.res_class ? ch.res_class : broken;
@@ -1266,15 +1267,20 @@ movemouse(const Arg *arg)
 					ny = selmon->wy;
 				else if (abs((selmon->wy + selmon->wh) - (ny + HEIGHT(c))) < snap)
 					ny = selmon->wy + selmon->wh - HEIGHT(c);
-				if (!c->isfloating && selmon->lt[selmon->sellt]->arrange
-				&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
-					togglefloating(NULL);
+				if (!c->isfloating && !c->isheld && selmon->lt[selmon->sellt]->arrange
+				&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap)) {
+					c->isheld = 1;
+					resize(c, c->x, c->y, c->w, c->h, 0);
+				}
+				arrange(selmon);
 			}
-			if (!selmon->lt[selmon->sellt]->arrange || c->isfloating)
+			if (!selmon->lt[selmon->sellt]->arrange || c->isfloating || c->isheld)
 				resize(c, nx, ny, c->w, c->h, 1);
 			break;
 		}
 	} while (ev.type != ButtonRelease);
+	c->isheld = 0;
+	arrange(selmon);
 	XUngrabPointer(dpy, CurrentTime);
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
 		sendmon(c, m);
@@ -1757,9 +1763,19 @@ void
 tile(Monitor *m)
 {
 	unsigned int i, n, h, mw, my, ty;
-	Client *c;
+	Client *c, *held = NULL, **prevp;
 
-	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
+	int x, y, di;
+	unsigned int dui;
+	Window dummy;
+	XQueryPointer(dpy, root, &dummy, &dummy, &x, &y, &di, &di, &dui);
+
+	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
+		if (c->isheld) {
+			// Detach to reattach later 
+			detach(c);
+			held = c;
+		}
 	if (n == 0)
 		return;
 
@@ -1767,16 +1783,35 @@ tile(Monitor *m)
 		mw = m->nmaster ? m->ww * m->mfact : 0;
 	else
 		mw = m->ww;
-	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
+	// XXX if the mouse is in the current window's rectangle and there is a
+	// held window, reattach it above the current window but don't call
+	// resize
+	prevp = &m->clients;
+	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
 		if (i < m->nmaster) {
 			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
-			my += HEIGHT(c);
+			if (held && m->wx <= x && m->wy + my <= y && m->wx + mw > x && m->wy + my + h > y) {
+				held->next = c;
+				c = *prevp = held;
+				held = NULL;
+			} else
+				resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+			my += h;
 		} else {
 			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
-			ty += HEIGHT(c);
+			if (held && m->wx + mw <= x && m->wy + ty <= y && m->wx + m->ww > x && m->wy + ty + h > y) {
+				held->next = c;
+				c = *prevp = held;
+				held = NULL;
+			} else
+				resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+			ty += h;
 		}
+		prevp = &c->next;
+	}
+	// Just in case it didn't get reattached anywhere
+	if (held)
+		attach(held);
 }
 
 void
