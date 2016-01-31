@@ -1762,14 +1762,14 @@ void
 tile(Monitor *m)
 {
 	unsigned int i, n, h, mw, my, ty;
+	int x, y;
 	Client *c, *held = NULL, **prevp;
 
-	int x, y;
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
 		if (c->isheld && getrootptr(&x, &y)) {
 			// Detach to reattach later 
-			detach(c);
 			held = c;
+			detach(held);
 		}
 	if (n == 0)
 		return;
@@ -1778,9 +1778,6 @@ tile(Monitor *m)
 		mw = m->nmaster ? m->ww * m->mfact : 0;
 	else
 		mw = m->ww;
-	// XXX if the mouse is in the current window's rectangle and there is a
-	// held window, reattach it above the current window but don't call
-	// resize
 	prevp = &m->clients;
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
 		if (i < m->nmaster) {
