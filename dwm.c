@@ -1806,7 +1806,7 @@ tile(Monitor *m)
 	}
 	// Just in case it didn't get reattached anywhere
 	if (held) {
-		held->next = NULL;
+		held->next = *prevp;
 		*prevp = held;
 	}
 }
