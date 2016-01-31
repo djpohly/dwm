@@ -1764,13 +1764,9 @@ tile(Monitor *m)
 	unsigned int i, n, h, mw, my, ty;
 	Client *c, *held = NULL, **prevp;
 
-	int x, y, di;
-	unsigned int dui;
-	Window dummy;
-	XQueryPointer(dpy, root, &dummy, &dummy, &x, &y, &di, &di, &dui);
-
+	int x, y;
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
-		if (c->isheld) {
+		if (c->isheld && getrootptr(&x, &y)) {
 			// Detach to reattach later 
 			detach(c);
 			held = c;
