@@ -1805,8 +1805,10 @@ tile(Monitor *m)
 		prevp = &c->next;
 	}
 	// Just in case it didn't get reattached anywhere
-	if (held)
-		attach(held);
+	if (held) {
+		held->next = NULL;
+		*prevp = held;
+	}
 }
 
 void
