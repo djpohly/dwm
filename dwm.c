@@ -1806,10 +1806,10 @@ tile(Monitor *m)
 	// If held window didn't get reattached anywhere, attach after last tiled
 	if (held) {
 		if (n <= m->nmaster) {
-			h = (m->wh - my) / (MIN(1, m->nmaster - n + 1));
+			h = (m->wh - my) / MIN(1, m->nmaster - n + 1);
 			resize(held, held->x, held->y, mw - (2*held->bw), h - (2*held->bw), 0);
 		} else {
-			h = (m->wh - ty);
+			h = m->wh - ty;
 			resize(held, held->x, held->y, m->ww - mw - (2*held->bw), h - (2*held->bw), 0);
 		}
 		held->next = *prevp;

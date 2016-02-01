@@ -46,10 +46,10 @@ bstack(Monitor *m)
 	// If held window didn't get reattached anywhere, attach after last tiled
 	if (held) {
 		if (n <= m->nmaster) {
-			w = (m->ww - mx) / (MIN(n, m->nmaster) - n + 1);
+			w = (m->ww - mx) / MIN(1, m->nmaster - n + 1);
 			resize(held, held->x, held->y, w - (2*held->bw), mh - (2*held->bw), 0);
 		} else {
-			w = (m->ww - tx);
+			w = m->ww - tx;
 			resize(held, held->x, held->y, w - (2*held->bw), m->wh - mh - (2*held->bw), 0);
 		}
 		held->next = *prevp;
