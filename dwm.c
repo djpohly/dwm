@@ -1255,8 +1255,8 @@ movemouse(const Arg *arg)
 				continue;
 			lasttime = ev.xmotion.time;
 
-			nx = ocx + (ev.xmotion.x - x);
-			ny = ocy + (ev.xmotion.y - y);
+			nx = ev.xmotion.x - MIN(x - ocx, WIDTH(c) - 2 * c->bw);
+			ny = ev.xmotion.y - MIN(y - ocy, HEIGHT(c) - 2 * c->bw);
 			if (nx >= selmon->wx && nx <= selmon->wx + selmon->ww
 			&& ny >= selmon->wy && ny <= selmon->wy + selmon->wh) {
 				if (abs(selmon->wx - nx) < snap)
@@ -2132,7 +2132,7 @@ warp(const Client *c) {
 	int x, y, di;
 	unsigned int dui;
 
-	if(!c)
+	if(!c || c->isheld)
 		return;
 	XQueryPointer(dpy, root, &dummy, &dummy, &x, &y, &di, &di, &dui);
 	if(x > c->x && y > c->y && x < c->x + c->w && y < c->y + c->h)
