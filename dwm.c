@@ -1783,6 +1783,7 @@ tile(Monitor *m)
 		if (i < m->nmaster) {
 			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
 			if (held && m->wx <= x && m->wy + my <= y && m->wx + mw > x && m->wy + my + h > y) {
+				resize(held, held->x, held->y, mw - (2*held->bw), h - (2*held->bw), 0);
 				held->next = c;
 				c = *prevp = held;
 				held = NULL;
@@ -1792,6 +1793,7 @@ tile(Monitor *m)
 		} else {
 			h = (m->wh - ty) / (n - i);
 			if (held && m->wx + mw <= x && m->wy + ty <= y && m->wx + m->ww > x && m->wy + ty + h > y) {
+				resize(held, held->x, held->y, m->ww - mw - (2*held->bw), h - (2*held->bw), 0);
 				held->next = c;
 				c = *prevp = held;
 				held = NULL;
@@ -1801,8 +1803,15 @@ tile(Monitor *m)
 		}
 		prevp = &c->next;
 	}
-	// Just in case it didn't get reattached anywhere
+	// If held window didn't get reattached anywhere, attach after last tiled
 	if (held) {
+		if (n <= m->nmaster) {
+			h = (m->wh - my) / (MIN(1, m->nmaster - n + 1));
+			resize(held, held->x, held->y, mw - (2*held->bw), h - (2*held->bw), 0);
+		} else {
+			h = (m->wh - ty);
+			resize(held, held->x, held->y, m->ww - mw - (2*held->bw), h - (2*held->bw), 0);
+		}
 		held->next = *prevp;
 		*prevp = held;
 	}
