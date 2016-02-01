@@ -1767,7 +1767,7 @@ tile(Monitor *m)
 
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
 		if (c->isheld && getrootptr(&x, &y)) {
-			// Detach to reattach later 
+			// Detach to reattach later
 			held = c;
 			detach(held);
 		}

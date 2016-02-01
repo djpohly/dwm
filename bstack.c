@@ -23,6 +23,7 @@ bstack(Monitor *m)
 		if (i < m->nmaster) {
 			w = (m->ww - mx) / (MIN(n, m->nmaster) - i);
 			if (held && m->wx + mx <= x && m->wy <= y && m->wx + mx + w > x && m->wy + mh > y) {
+				resize(held, held->x, held->y, w - (2*held->bw), mh - (2*held->bw), 0);
 				held->next = c;
 				c = *prevp = held;
 				held = NULL;
@@ -32,6 +33,7 @@ bstack(Monitor *m)
 		} else {
 			w = (m->ww - tx) / (n - i);
 			if (held && m->wx + tx <= x && m->wy + mh <= y && m->wx + tx + w > x && m->wy + m->wh > y) {
+				resize(held, held->x, held->y, w - (2*held->bw), m->wh - mh - (2*held->bw), 0);
 				held->next = c;
 				c = *prevp = held;
 				held = NULL;
@@ -41,8 +43,15 @@ bstack(Monitor *m)
 		}
 		prevp = &c->next;
 	}
-	// Just in case it didn't get reattached anywhere
+	// If held window didn't get reattached anywhere, attach after last tiled
 	if (held) {
+		if (n <= m->nmaster) {
+			w = (m->ww - mx) / (MIN(n, m->nmaster) - n + 1);
+			resize(held, held->x, held->y, w - (2*held->bw), mh - (2*held->bw), 0);
+		} else {
+			w = (m->ww - tx);
+			resize(held, held->x, held->y, w - (2*held->bw), m->wh - mh - (2*held->bw), 0);
+		}
 		held->next = *prevp;
 		*prevp = held;
 	}
