@@ -95,7 +95,7 @@ struct Client {
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh;
 	int bw, oldbw;
 	unsigned int tags;
-	int isfixed, isfloating, isheld, isurgent, neverfocus, oldstate, isfullscreen;
+	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
 	Client *next;
 	Client *snext;
 	Monitor *mon;
@@ -290,7 +290,6 @@ applyrules(Client *c)
 
 	/* rule matching */
 	c->isfloating = 0;
-	c->isheld = 0;
 	c->tags = 0;
 	XGetClassHint(dpy, c->win, &ch);
 	class    = ch.res_class ? ch.res_class : broken;
@@ -1255,8 +1254,8 @@ movemouse(const Arg *arg)
 				continue;
 			lasttime = ev.xmotion.time;
 
-			nx = ev.xmotion.x - MIN(x - ocx, WIDTH(c) - 2 * c->bw);
-			ny = ev.xmotion.y - MIN(y - ocy, HEIGHT(c) - 2 * c->bw);
+			nx = ocx + (ev.xmotion.x - x);
+			ny = ocy + (ev.xmotion.y - y);
 			if (nx >= selmon->wx && nx <= selmon->wx + selmon->ww
 			&& ny >= selmon->wy && ny <= selmon->wy + selmon->wh) {
 				if (abs(selmon->wx - nx) < snap)
@@ -1267,19 +1266,15 @@ movemouse(const Arg *arg)
 					ny = selmon->wy;
 				else if (abs((selmon->wy + selmon->wh) - (ny + HEIGHT(c))) < snap)
 					ny = selmon->wy + selmon->wh - HEIGHT(c);
+				if (!c->isfloating && selmon->lt[selmon->sellt]->arrange
+				&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
+					togglefloating(NULL);
 			}
-			if (!c->isfloating && !c->isheld && selmon->lt[selmon->sellt]->arrange
-			&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
-				c->isheld = 1;
-			if (!selmon->lt[selmon->sellt]->arrange || c->isfloating || c->isheld) {
+			if (!selmon->lt[selmon->sellt]->arrange || c->isfloating)
 				resize(c, nx, ny, c->w, c->h, 1);
-				arrange(selmon);
-			}
 			break;
 		}
 	} while (ev.type != ButtonRelease);
-	c->isheld = 0;
-	arrange(selmon);
 	XUngrabPointer(dpy, CurrentTime);
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
 		sendmon(c, m);
@@ -1762,15 +1757,9 @@ void
 tile(Monitor *m)
 {
 	unsigned int i, n, h, mw, my, ty;
-	int x, y;
-	Client *c, *held = NULL, **prevp;
+	Client *c;
 
-	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++)
-		if (c->isheld && getrootptr(&x, &y)) {
-			// Detach to reattach later
-			held = c;
-			detach(held);
-		}
+	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 	if (n == 0)
 		return;
 
@@ -1778,43 +1767,16 @@ tile(Monitor *m)
 		mw = m->nmaster ? m->ww * m->mfact : 0;
 	else
 		mw = m->ww;
-	prevp = &m->clients;
-	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++) {
+	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < m->nmaster) {
 			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-			if (held && m->wx <= x && m->wy + my <= y && m->wx + mw > x && m->wy + my + h > y) {
-				resize(held, held->x, held->y, mw - (2*held->bw), h - (2*held->bw), 0);
-				held->next = c;
-				c = *prevp = held;
-				held = NULL;
-			} else
-				resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
-			my += h;
+			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+			my += HEIGHT(c);
 		} else {
 			h = (m->wh - ty) / (n - i);
-			if (held && m->wx + mw <= x && m->wy + ty <= y && m->wx + m->ww > x && m->wy + ty + h > y) {
-				resize(held, held->x, held->y, m->ww - mw - (2*held->bw), h - (2*held->bw), 0);
-				held->next = c;
-				c = *prevp = held;
-				held = NULL;
-			} else
-				resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
-			ty += h;
+			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+			ty += HEIGHT(c);
 		}
-		prevp = &c->next;
-	}
-	// If held window didn't get reattached anywhere, attach after last tiled
-	if (held) {
-		if (n <= m->nmaster) {
-			h = (m->wh - my) / MIN(1, m->nmaster - n + 1);
-			resize(held, held->x, held->y, mw - (2*held->bw), h - (2*held->bw), 0);
-		} else {
-			h = m->wh - ty;
-			resize(held, held->x, held->y, m->ww - mw - (2*held->bw), h - (2*held->bw), 0);
-		}
-		held->next = *prevp;
-		*prevp = held;
-	}
 }
 
 void
@@ -2132,7 +2094,7 @@ warp(const Client *c) {
 	int x, y, di;
 	unsigned int dui;
 
-	if(!c || c->isheld)
+	if(!c)
 		return;
 	XQueryPointer(dpy, root, &dummy, &dummy, &x, &y, &di, &di, &dui);
 	if(x > c->x && y > c->y && x < c->x + c->w && y < c->y + c->h)
