@@ -34,6 +34,7 @@ static const Rule rules[] = {
 	{ "Vncviewer", NULL,       NULL,       0,            1,        -1 },
 	{ "StepMania", NULL,       NULL,       0,            1,        -1 },
 	{ "Dolphin-emu", NULL,     NULL,       0,            1,        -1 },
+	{ "Wine",      NULL,       NULL,       0,            1,        -1 },
 };
 
 /* layout(s) */
