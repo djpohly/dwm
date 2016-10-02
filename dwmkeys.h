@@ -15,8 +15,8 @@ static const char *prevcmd[]  = { "mpc", "-q", "prev", NULL };
 static const char *nextcmd[]  = { "mpc", "-q", "next", NULL };
 static const char *ffcmd[]  = { "mpc", "-q", "seek", "+20", NULL };
 static const char *rewcmd[]  = { "mpc", "-q", "seek", "-20", NULL };
-static const char *brightupcmd[] = { "xbacklight", "-inc", "10", "-time", "75", NULL };
-static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", NULL };
+static const char *brightupcmd[] = { "light", "-A", "5", NULL };
+static const char *brightdncmd[] = { "light", "-U", "5", NULL };
 
 
 #include <X11/keysym.h>
