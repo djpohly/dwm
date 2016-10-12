@@ -45,7 +45,6 @@ static Key keys[] = {
 	{ MODKEY,                       XK_Left,   spawn,          rewcmd},
 	{ MODKEY,                       XK_Right,  spawn,          ffcmd},
 
-	{ MODKEY,                    XK_BackSpace, print,          "restart" },
 	{ MODKEY|ShiftMask,          XK_BackSpace, print,          "exit" },
 	{ MODKEY,                       XK_t,      print,          "focusstack+" },
 	{ MODKEY,                       XK_n,      print,          "focusstack-" },
