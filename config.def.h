@@ -108,8 +108,7 @@ static Button buttons[] = {
 };
 
 static Command commands[] = {
-	{ "restart",         state,          {.ui = StRestart} },
-	{ "exit",            state,          {.ui = StShutdown} },
+	{ "exit",            quit,           {0} },
 	{ "focusstack+",     focusstack,     {.i = +1} },
 	{ "focusstack-",     focusstack,     {.i = -1} },
 	{ "push+",           pushdown,       {.i = +1} },
