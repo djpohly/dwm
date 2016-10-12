@@ -17,6 +17,7 @@ static const char *ffcmd[]  = { "mpc", "-q", "seek", "+20", NULL };
 static const char *rewcmd[]  = { "mpc", "-q", "seek", "-20", NULL };
 static const char *brightupcmd[] = { "light", "-A", "5", NULL };
 static const char *brightdncmd[] = { "light", "-U", "5", NULL };
+static const char *quitcmd[] = { "s6-svscanctl", "-t", ".local/share/service", NULL };
 
 
 #include <X11/keysym.h>
@@ -24,6 +25,7 @@ static const char *brightdncmd[] = { "light", "-U", "5", NULL };
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
+	{ MODKEY|ShiftMask,          XK_BackSpace, spawn,          quitcmd },
 	{ MODKEY|ShiftMask,             XK_Return, spawn,          termcmd },
 	{ MODKEY,                       XK_space,  spawn,          lockcmd },
 	{ 0,              XF86XK_AudioLowerVolume, spawn,          lowervolcmd},
@@ -45,7 +47,7 @@ static Key keys[] = {
 	{ MODKEY,                       XK_Left,   spawn,          rewcmd},
 	{ MODKEY,                       XK_Right,  spawn,          ffcmd},
 
-	{ MODKEY|ShiftMask,          XK_BackSpace, print,          "exit" },
+	{ MODKEY,                    XK_BackSpace, print,          "exit" },
 	{ MODKEY,                       XK_t,      print,          "focusstack+" },
 	{ MODKEY,                       XK_n,      print,          "focusstack-" },
 	{ MODKEY,                       XK_Tab,    print,          "focusstack+" },
