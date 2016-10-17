@@ -17,7 +17,7 @@ static const char *ffcmd[]  = { "mpc", "-q", "seek", "+20", NULL };
 static const char *rewcmd[]  = { "mpc", "-q", "seek", "-20", NULL };
 static const char *brightupcmd[] = { "light", "-A", "5", NULL };
 static const char *brightdncmd[] = { "light", "-U", "5", NULL };
-static const char *quitcmd[] = { "s6-svscanctl", "-t", ".local/share/service", NULL };
+static const char *quitcmd[] = { "s6-svscanctl", "-t", ".local/share/services", NULL };
 
 
 #include <X11/keysym.h>
