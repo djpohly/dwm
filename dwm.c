@@ -58,11 +58,10 @@
 #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
 #define HEIGHT(X)               ((X)->h + 2 * (X)->bw)
 #define TAGMASK                 ((1 << LENGTH(tags)) - 1)
-#define ColBorder               2
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel }; /* color schemes */
+enum { SchemeNorm, SchemeSel, SchemeUrg }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
        NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
@@ -769,16 +768,19 @@ drawbarnum(Monitor *m, unsigned int i) {
 	for (i = 0; i < LENGTH(tags); i++) {
 		if (m->tagset[m->seltags] & 1 << i) {
 			if (urg & 1 << i)
-				printf("^fg(%s)^bg(%s)", urgbgcolor, urgfgcolor);
+				printf("^fg(%s)^bg(%s)", colors[SchemeUrg][ColBG],
+						colors[SchemeUrg][ColFG]);
 			else
-				printf("^fg(%s)^bg(%s)", normbgcolor, normfgcolor);
+				printf("^fg(%s)^bg(%s)", colors[SchemeNorm][ColBG],
+						colors[SchemeNorm][ColFG]);
 			if (m == selmon && selmon->sel && selmon->sel->tags & 1 << i)
 				printf("(%s)^bg()^fg()", tags[i]);
 			else
 				printf(" %s ^bg()^fg()", tags[i]);
 		} else if (occ & 1 << i) {
 			if (urg & 1 << i)
-				printf("^fg(%s)^bg(%s)", urgfgcolor, urgbgcolor);
+				printf("^fg(%s)^bg(%s)", colors[SchemeUrg][ColFG],
+						colors[SchemeUrg][ColBG]);
 			if (m == selmon && selmon->sel && selmon->sel->tags & 1 << i)
 				printf("(%s)^fg()^bg()", tags[i]);
 			else
@@ -787,7 +789,8 @@ drawbarnum(Monitor *m, unsigned int i) {
 	}
 	printf(" %s ", m->ltsymbol);
 	if (m->sel)
-		printf("^fg(%s)^bg(%s) %s ^bg()^fg()", normbgcolor, normfgcolor, m->sel->name);
+		printf("^fg(%s)^bg(%s) %s ^bg()^fg()", colors[SchemeNorm][ColBG],
+				colors[SchemeNorm][ColFG], m->sel->name);
 	printf("\n");
 	fflush(stdout);
 }
