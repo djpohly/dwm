@@ -3,18 +3,21 @@
 #include "push.h"
 
 /* appearance */
-static const char dmenufont[]       = "-*-terminus-medium-r-*-*-16-*-*-*-*-*-*-*";
-static const char normbordercolor[] = "#2e3435";
-static const char normbgcolor[]     = "#000000";
-static const char normfgcolor[]     = "#babdb6";
-static const char selbordercolor[]  = "#eeeeec";
-static const char *selbgcolor       = normfgcolor;
-static const char *selfgcolor       = normbgcolor;
-static const char urgbgcolor[]      = "#204a87";
-static const char urgfgcolor[]      = "#729fcf";
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 static const unsigned int topgap    = 19;       /* gap at top of screen */
+static const char dmenufont[]       = "-*-terminus-medium-r-*-*-16-*-*-*-*-*-*-*";
+static const char normfgcolor[]     = "#babdb6";
+static const char normbgcolor[]     = "#000000";
+static const char normbordercolor[] = "#2e3435";
+static const char selbordercolor[]  = "#eeeeec";
+static const char urgbgcolor[]      = "#204a87";
+static const char urgfgcolor[]      = "#729fcf";
+static const char *colors[][3]      = {
+	/*               fg         bg         border   */
+	[SchemeNorm] = { normfgcolor, normbgcolor, normbordercolor },
+	[SchemeSel]  = { normbgcolor, normfgcolor, selbordercolor  },
+};
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
