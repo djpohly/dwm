@@ -17,7 +17,9 @@ static const char *colors[][3]      = {
 	/*               fg         bg         border   */
 	[SchemeNorm] = { normfgcolor, normbgcolor, normbordercolor },
 	[SchemeSel]  = { normbgcolor, normfgcolor, selbordercolor  },
+	[SchemeUrg]  = { urgfgcolor , urgbgcolor , normbordercolor },
 };
+enum { ColFG, ColBG, ColBorder }; /* color scheme entries */
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
