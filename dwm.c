@@ -766,26 +766,15 @@ drawbarnum(Monitor *m, unsigned int i) {
 	}
 	printf("%d\n", i);
 	for (i = 0; i < LENGTH(tags); i++) {
-		if (m->tagset[m->seltags] & 1 << i) {
-			if (urg & 1 << i)
-				printf("^fg(%s)^bg(%s)", colors[SchemeUrg][ColBG],
-						colors[SchemeUrg][ColFG]);
-			else
-				printf("^fg(%s)^bg(%s)", colors[SchemeNorm][ColBG],
-						colors[SchemeNorm][ColFG]);
-			if (m == selmon && selmon->sel && selmon->sel->tags & 1 << i)
-				printf("(%s)^bg()^fg()", tags[i]);
-			else
-				printf(" %s ^bg()^fg()", tags[i]);
-		} else if (occ & 1 << i) {
-			if (urg & 1 << i)
-				printf("^fg(%s)^bg(%s)", colors[SchemeUrg][ColFG],
-						colors[SchemeUrg][ColBG]);
-			if (m == selmon && selmon->sel && selmon->sel->tags & 1 << i)
-				printf("(%s)^fg()^bg()", tags[i]);
-			else
-				printf(" %s ^fg()^bg()", tags[i]);
-		}
+		const char **cs = colors[(urg & 1 << 1) ? SchemeUrg : SchemeNorm];
+		char *brkt = (m == selmon && selmon->sel && selmon->sel->tags & 1 << i) ?
+			"()" : "  ";
+		char *fmt = "";
+		if (m->tagset[m->seltags] & 1 << i)
+			fmt = "^bg(%s)^fg(%s)%c%s%c^fg()^bg()";
+		else if (occ & 1 << i)
+			fmt = "^fg(%s)^bg(%s)%c%s%c^bg()^fg()";
+		printf(fmt, cs[ColFG], cs[ColBG], brkt[0], tags[i], brkt[1]);
 	}
 	printf(" %s ", m->ltsymbol);
 	if (m->sel)
