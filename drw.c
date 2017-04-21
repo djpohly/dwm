@@ -11,12 +11,11 @@
 Drw *
 drw_create(Display *dpy, int screen)
 {
-	Drw *drw;
+	Drw *drw = ecalloc(1, sizeof(Drw));
 
-	drw = ecalloc(1, sizeof(Drw));
 	drw->dpy = dpy;
 	drw->screen = screen;
-	drw->scheme = NULL;
+
 	return drw;
 }
 
@@ -25,31 +24,40 @@ drw_free(Drw *drw) {
 	free(drw);
 }
 
-Clr *
-drw_clr_create(Drw *drw, const char *clrname)
+void
+drw_clr_create(Drw *drw, XftColor *dest, const char *clrname)
 {
-	Clr *clr;
+	if (!drw || !dest || !clrname)
+		return;
 
-	clr = ecalloc(1, sizeof(Clr));
 	if (!XftColorAllocName(drw->dpy, DefaultVisual(drw->dpy, drw->screen),
 	                       DefaultColormap(drw->dpy, drw->screen),
-	                       clrname, &clr->rgb))
-		die("error, cannot allocate color '%s'\n", clrname);
-	clr->pix = clr->rgb.pixel;
+	                       clrname, dest))
+		die("error, cannot allocate color '%s'", clrname);
+}
 
-	return clr;
+/* Wrapper to create color schemes. The caller has to call free(3) on the
+ * returned color scheme when done using it. */
+Scm
+drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount)
+{
+	size_t i;
+	Scm ret;
+
+	/* need at least two colors for a scheme */
+	if (!drw || !clrnames || clrcount < 2 || !(ret = ecalloc(clrcount, sizeof(XftColor))))
+		return NULL;
+
+	for (i = 0; i < clrcount; i++)
+		drw_clr_create(drw, &ret[i], clrnames[i]);
+	return ret;
 }
 
 void
-drw_clr_free(Clr *clr)
+drw_setscheme(Drw *drw, Scm scm)
 {
-	free(clr);
-}
-
-void
-drw_setscheme(Drw *drw, ClrScheme *scheme)
-{
-	drw->scheme = scheme;
+	if (drw)
+		drw->scheme = scm;
 }
 
 Cur *
@@ -57,7 +65,9 @@ drw_cur_create(Drw *drw, int shape)
 {
 	Cur *cur;
 
-	cur = ecalloc(1, sizeof(Cur));
+	if (!drw || !(cur = ecalloc(1, sizeof(Cur))))
+		return NULL;
+
 	cur->cursor = XCreateFontCursor(drw->dpy, shape);
 
 	return cur;
@@ -68,6 +78,7 @@ drw_cur_free(Drw *drw, Cur *cursor)
 {
 	if (!cursor)
 		return;
+
 	XFreeCursor(drw->dpy, cursor->cursor);
 	free(cursor);
 }

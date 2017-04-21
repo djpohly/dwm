@@ -1,43 +1,29 @@
 /* See LICENSE file for copyright and license details. */
-#define DRW_FONT_CACHE_SIZE 32
-
-typedef struct {
-	unsigned long pix;
-	XftColor rgb;
-} Clr;
 
 typedef struct {
 	Cursor cursor;
 } Cur;
 
-typedef struct {
-	Clr *fg;
-	Clr *bg;
-	Clr *border;
-} ClrScheme;
+enum { ColFg, ColBg, ColCount }; /* Scm index */
+typedef XftColor *Scm;
 
 typedef struct {
 	Display *dpy;
 	int screen;
-	ClrScheme *scheme;
+	Scm scheme;
 } Drw;
 
-typedef struct {
-	unsigned int w;
-	unsigned int h;
-} Extnts;
-
 /* Drawable abstraction */
-Drw *drw_create(Display *, int );
-void drw_free(Drw *);
+Drw *drw_create(Display *dpy, int screen);
+void drw_free(Drw *drw);
 
-/* Colour abstraction */
-Clr *drw_clr_create(Drw *, const char *);
-void drw_clr_free(Clr *);
+/* Colorscheme abstraction */
+void drw_clr_create(Drw *drw, XftColor *dest, const char *clrname);
+Scm drw_scm_create(Drw *drw, const char *clrnames[], size_t clrcount);
 
 /* Cursor abstraction */
-Cur *drw_cur_create(Drw *, int);
-void drw_cur_free(Drw *, Cur *);
+Cur *drw_cur_create(Drw *drw, int shape);
+void drw_cur_free(Drw *drw, Cur *cursor);
 
 /* Drawing context manipulation */
-void drw_setscheme(Drw *, ClrScheme *);
+void drw_setscheme(Drw *drw, Scm scm);
