@@ -766,7 +766,7 @@ drawbarnum(Monitor *m, unsigned int i) {
 	}
 	printf("%d\n", i);
 	for (i = 0; i < LENGTH(tags); i++) {
-		const char **cs = colors[(urg & 1 << 1) ? SchemeUrg : SchemeNorm];
+		const char **cs = colors[(urg & 1 << i) ? SchemeUrg : SchemeNorm];
 		char *brkt = (m == selmon && selmon->sel && selmon->sel->tags & 1 << i) ?
 			"()" : "  ";
 		char *fmt = "";
