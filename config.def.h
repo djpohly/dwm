@@ -40,6 +40,7 @@ static const Rule rules[] = {
 	{ "StepMania", NULL,       NULL,       0,            1,        -1 },
 	{ "Dolphin-emu", NULL,     NULL,       0,            1,        -1 },
 	{ "Wine",      NULL,       NULL,       0,            1,        -1 },
+	{ NULL,        "urxvt-pdl", NULL,     16,            0,        -1 },
 };
 
 /* layout(s) */
