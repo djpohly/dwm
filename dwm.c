@@ -222,13 +222,13 @@ static void toggleview(const Arg *arg);
 static void unfocus(Client *c, int setfocus);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
-static int updategeom(void);
 static void updatebarpos(Monitor *m);
 static void updateclientlist(void);
+static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
-static void updatewindowtype(Client *c);
 static void updatetitle(Client *c);
+static void updatewindowtype(Client *c);
 static void updatewmhints(Client *c);
 static void view(const Arg *arg);
 static void warp(const Client *c);
@@ -774,12 +774,12 @@ drawbarnum(Monitor *m, unsigned int i) {
 			fmt = "^bg(%s)^fg(%s)%c%s%c^fg()^bg()";
 		else if (occ & 1 << i)
 			fmt = "^fg(%s)^bg(%s)%c%s%c^bg()^fg()";
-		printf(fmt, cs[ColFG], cs[ColBG], brkt[0], tags[i], brkt[1]);
+		printf(fmt, cs[ColFg], cs[ColBg], brkt[0], tags[i], brkt[1]);
 	}
 	printf(" %s ", m->ltsymbol);
 	if (m->sel)
-		printf("^fg(%s)^bg(%s) %s ^bg()^fg()", colors[SchemeNorm][ColBG],
-				colors[SchemeNorm][ColFG], m->sel->name);
+		printf("^fg(%s)^bg(%s) %s ^bg()^fg()", colors[SchemeNorm][ColBg],
+				colors[SchemeNorm][ColFg], m->sel->name);
 	printf("\n");
 	fflush(stdout);
 }
@@ -2185,6 +2185,10 @@ main(int argc, char *argv[])
 		die("dwm: cannot open display");
 	checkotherwm();
 	setup();
+#ifdef __OpenBSD__
+	if (pledge("stdio rpath proc exec", NULL) == -1)
+		die("pledge");
+#endif /* __OpenBSD__ */
 	scan();
 	drawbars();
 	run();

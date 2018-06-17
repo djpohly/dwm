@@ -19,7 +19,6 @@ static const char *colors[][3]      = {
 	[SchemeSel]  = { normbgcolor, normfgcolor, selbordercolor  },
 	[SchemeUrg]  = { urgfgcolor , urgbgcolor , normbordercolor },
 };
-enum { ColFG, ColBG, ColBorder }; /* color scheme entries */
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
@@ -105,7 +104,7 @@ static Key keys[] = {
 };
 
 /* button definitions */
-/* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button buttons[] = {
 	/* click                event mask      button          function        argument */
 	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
