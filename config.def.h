@@ -19,7 +19,6 @@ static const char *colors[][3]      = {
 	[SchemeSel]  = { normbgcolor, normfgcolor, selbordercolor  },
 	[SchemeUrg]  = { urgfgcolor , urgbgcolor , normbordercolor },
 };
-enum { ColFG, ColBG, ColBorder }; /* color scheme entries */
 
 /* tagging */
 static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
@@ -91,6 +90,10 @@ static const char *todocmd[]  = { "/bin/sh", "-c",
 		"(read list task && [ -n \"$list\" -a -n \"$task\" ] && "
 		" t --task-dir ~/.tasks --list \"$list\" \"$task\")",
 	dmenumon, NULL };
+static const char *passcmd[]  = { "/bin/sh", "-c",
+	"passmenu -m $0", dmenumon, NULL };
+static const char *passtypecmd[]  = { "/bin/sh", "-c",
+	"passmenu --type -m $0", dmenumon, NULL };
 
 
 #include <X11/XF86keysym.h>
@@ -102,10 +105,12 @@ static Key keys[] = {
 	{ MODKEY|ControlMask,           XK_r,      spawn,          {.v = runtermcmd } },
 	{ MODKEY,                       XK_c,      spawn,          {.v = colorcmd } },
 	{ MODKEY|ControlMask,           XK_t,      spawn,          {.v = todocmd } },
+	{ MODKEY,                       XK_p,      spawn,          {.v = passcmd } },
+	{ MODKEY|ShiftMask,             XK_p,      spawn,          {.v = passtypecmd } },
 };
 
 /* button definitions */
-/* click can be ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button buttons[] = {
 	/* click                event mask      button          function        argument */
 	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
