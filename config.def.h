@@ -90,6 +90,10 @@ static const char *todocmd[]  = { "/bin/sh", "-c",
 		"(read list task && [ -n \"$list\" -a -n \"$task\" ] && "
 		" t --task-dir ~/.tasks --list \"$list\" \"$task\")",
 	dmenumon, NULL };
+static const char *passcmd[]  = { "/bin/sh", "-c",
+	"passmenu -m $0", dmenumon, NULL };
+static const char *passtypecmd[]  = { "/bin/sh", "-c",
+	"passmenu --type -m $0", dmenumon, NULL };
 
 
 #include <X11/XF86keysym.h>
@@ -101,6 +105,8 @@ static Key keys[] = {
 	{ MODKEY|ControlMask,           XK_r,      spawn,          {.v = runtermcmd } },
 	{ MODKEY,                       XK_c,      spawn,          {.v = colorcmd } },
 	{ MODKEY|ControlMask,           XK_t,      spawn,          {.v = todocmd } },
+	{ MODKEY,                       XK_p,      spawn,          {.v = passcmd } },
+	{ MODKEY|ShiftMask,             XK_p,      spawn,          {.v = passtypecmd } },
 };
 
 /* button definitions */
