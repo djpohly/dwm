@@ -18,6 +18,8 @@ static const char *rewcmd[]  = { "mpc", "-q", "seek", "-20", NULL };
 static const char *brightupcmd[] = { "xbacklight", "-inc", "10", "-time", "75", "-steps", "20", NULL };
 static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", "-steps", "20", NULL };
 static const char *quitcmd[] = { "s6-svscanctl", "-t", ".local/share/services/.scandir", NULL };
+static const char *mediacmd[] = { "mpvclip", NULL };
+static const char *mediadlcmd[] = { "dlclip", NULL };
 
 
 #include <X11/keysym.h>
@@ -46,6 +48,8 @@ static Key keys[] = {
 	{ MODKEY,                       XK_End,    spawn,          nextcmd},
 	{ MODKEY,                       XK_Left,   spawn,          rewcmd},
 	{ MODKEY,                       XK_Right,  spawn,          ffcmd},
+	{ MODKEY,                       XK_a,      spawn,          mediacmd},
+	{ MODKEY|ShiftMask,             XK_a,      spawn,          mediadlcmd},
 
 	{ MODKEY,                    XK_BackSpace, print,          "exit" },
 	{ MODKEY,                       XK_t,      print,          "focusstack+" },
