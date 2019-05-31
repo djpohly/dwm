@@ -3,6 +3,7 @@
 #include "push.h"
 
 /* appearance */
+static const unsigned int panel[] = {30, 0, 0, 0};//positions: 0-top panel, 1-bottom panel, 2-left panel, 3-right panel
 static const unsigned int borderpx  = 1;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 static const unsigned int topgap    = 19;       /* gap at top of screen */

@@ -1175,7 +1175,7 @@ monocle(Monitor *m)
 	if (n > 0) /* override layout symbol */
 		snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
 	for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
-		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
+		resize(c, m->wx + panel[2], m->wy + panel[1] , m->ww - 2 * c->bw - panel[3] - panel[2], m->wh - 2 * c->bw - panel[0] - panel[1], 0);
 }
 
 void
@@ -1230,14 +1230,14 @@ movemouse(const Arg *arg)
 
 			nx = ocx + (ev.xmotion.x - x);
 			ny = ocy + (ev.xmotion.y - y);
-			if (abs(selmon->wx - nx) < snap)
-				nx = selmon->wx;
-			else if (abs((selmon->wx + selmon->ww) - (nx + WIDTH(c))) < snap)
-				nx = selmon->wx + selmon->ww - WIDTH(c);
-			if (abs(selmon->wy - ny) < snap)
-				ny = selmon->wy;
-			else if (abs((selmon->wy + selmon->wh) - (ny + HEIGHT(c))) < snap)
-				ny = selmon->wy + selmon->wh - HEIGHT(c);
+			if (abs(selmon->wx + panel[2] - nx) < snap)
+				nx = selmon->wx + panel[2];
+			else if (abs((selmon->wx + selmon->ww - panel[3]) - (nx + WIDTH(c))) < snap)
+				nx = selmon->wx + selmon->ww - WIDTH(c) - panel[3];
+			if (abs(selmon->wy + panel[1] - ny) < snap)
+				ny = selmon->wy + panel[1];
+			else if (abs((selmon->wy + selmon->wh - panel[0]) - (ny + HEIGHT(c))) < snap)
+				ny = selmon->wy + selmon->wh - HEIGHT(c) - panel[0];
 			if (!c->isfloating && selmon->lt[selmon->sellt]->arrange
 			&& (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
 				togglefloating(NULL);
@@ -1763,12 +1763,12 @@ tile(Monitor *m)
 		mw = m->ww;
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < m->nmaster) {
-			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
-			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+			h = (m->wh - my) / (MIN(n, m->nmaster) - i) - panel[0];
+			resize(c, m->wx + panel[2], m->wy + my + panel[1], mw - (c->bw), h - (c->bw) - panel[1], 0);
 			my += HEIGHT(c);
 		} else {
-			h = (m->wh - ty) / (n - i);
-			resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+			h = (m->wh - ty) / (n - i) - panel[0];
+			resize(c, m->wx + mw + panel[2] , m->wy + ty + panel[1], m->ww - mw - (c->bw) - panel[2] - panel[3], h - (c->bw) - panel[1], 0);
 			ty += HEIGHT(c);
 		}
 }
