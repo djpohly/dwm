@@ -20,6 +20,7 @@ static const char *brightdncmd[] = { "xbacklight", "-dec", "10", "-time", "75", 
 static const char *quitcmd[] = { "s6-svscanctl", "-t", ".local/share/services/.scandir", NULL };
 static const char *mediacmd[] = { "mpvclip", NULL };
 static const char *mediadlcmd[] = { "dlclip", NULL };
+static const char *pbutcmd[]  = { "pbut", NULL };
 
 
 #include <X11/keysym.h>
@@ -30,6 +31,7 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,          XK_BackSpace, spawn,          quitcmd },
 	{ MODKEY|ShiftMask,             XK_Return, spawn,          termcmd },
 	{ MODKEY,                       XK_space,  spawn,          lockcmd },
+	{ 0,                      XF86XK_PowerOff, spawn,          pbutcmd },
 	{ 0,              XF86XK_AudioLowerVolume, spawn,          lowervolcmd},
 	{ 0,              XF86XK_AudioRaiseVolume, spawn,          raisevolcmd},
 	{ 0,                     XF86XK_AudioMute, spawn,          mutecmd},
