@@ -304,10 +304,8 @@ applyrules(Client *c)
 				c->mon = m;
 		}
 	}
-	if (ch.res_class)
-		XFree(ch.res_class);
-	if (ch.res_name)
-		XFree(ch.res_name);
+	XFree(ch.res_class);
+	XFree(ch.res_name);
 	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
 }
 
@@ -765,9 +763,8 @@ enternotify(XEvent *e)
 	if (m != selmon) {
 		unfocus(selmon->sel, 1);
 		selmon = m;
-	} else if (!c || c == selmon->sel)
-		return;
-	focus(c);
+	} else if (c && c != selmon->sel)
+		focus(c);
 }
 
 void
@@ -1094,10 +1091,9 @@ maprequest(XEvent *e)
 
 	if (!XGetWindowAttributes(dpy, ev->window, &wa))
 		return;
-	if (wa.override_redirect)
+	if (wa.override_redirect || wintoclient(ev->window))
 		return;
-	if (!wintoclient(ev->window))
-		manage(ev->window, &wa);
+	manage(ev->window, &wa);
 }
 
 void
@@ -1402,8 +1398,7 @@ scan(void)
 			&& (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
 				manage(wins[i], &wa);
 		}
-		if (wins)
-			XFree(wins);
+		XFree(wins);
 	}
 }
 
@@ -1437,24 +1432,23 @@ sendevent(Client *c, Atom proto)
 {
 	int n;
 	Atom *protocols;
-	int exists = 0;
 	XEvent ev;
 
-	if (XGetWMProtocols(dpy, c->win, &protocols, &n)) {
-		while (!exists && n--)
-			exists = protocols[n] == proto;
-		XFree(protocols);
-	}
-	if (exists) {
-		ev.type = ClientMessage;
-		ev.xclient.window = c->win;
-		ev.xclient.message_type = wmatom[WMProtocols];
-		ev.xclient.format = 32;
-		ev.xclient.data.l[0] = proto;
-		ev.xclient.data.l[1] = CurrentTime;
-		XSendEvent(dpy, c->win, False, NoEventMask, &ev);
-	}
-	return exists;
+	if (!XGetWMProtocols(dpy, c->win, &protocols, &n))
+		return 0;
+	while (n-- && protocols[n] != proto);
+	XFree(protocols);
+	if (n < 0)
+		return 0;
+
+	ev.type = ClientMessage;
+	ev.xclient.window = c->win;
+	ev.xclient.message_type = wmatom[WMProtocols];
+	ev.xclient.format = 32;
+	ev.xclient.data.l[0] = proto;
+	ev.xclient.data.l[1] = CurrentTime;
+	XSendEvent(dpy, c->win, False, NoEventMask, &ev);
+	return 1;
 }
 
 void
