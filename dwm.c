@@ -1124,7 +1124,7 @@ manage(Window w, XWindowAttributes *wa)
 	updatewindowtype(c);
 	updatesizehints(c);
 	updatewmhints(c);
-	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask);
+	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
 	grabbuttons(c, 0);
 	if (!c->isfloating)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
@@ -1865,6 +1865,8 @@ unmapnotify(XEvent *e)
 	Client *c;
 	XUnmapEvent *ev = &e->xunmap;
 
+	if (ev->event != root)
+		return;
 	if ((c = wintoclient(ev->window))) {
 		if (ev->send_event)
 			setclientstate(c, WithdrawnState);
