@@ -47,6 +47,10 @@
 #include "drw.h"
 #include "util.h"
 
+#if 1
+#include "instrument.h"
+#endif
+
 /* macros */
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
@@ -289,6 +293,7 @@ applyrules(Client *c)
 	Monitor *m;
 	XClassHint ch = { NULL, NULL };
 
+	instlog("  applyrules(0x%lx)\n", c->win);
 	/* rule matching */
 	c->isfloating = 0;
 	c->tags = 0;
@@ -319,6 +324,7 @@ applyrules(Client *c)
 void
 adjustborders(Monitor *m)
 {
+	instlog("  adjustborders()\n");
 	Client *c, *l = NULL;
 	int visible = 0;
 
@@ -414,6 +420,7 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 void
 arrange(Monitor *m)
 {
+	instlog("  arrange()\n");
 	if (m) {
 		adjustborders(m);
 		showhide(m->stack);
@@ -433,6 +440,7 @@ arrange(Monitor *m)
 void
 arrangemon(Monitor *m)
 {
+	instlog("  arrangemon()\n");
 	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
 	if (m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
@@ -441,6 +449,7 @@ arrangemon(Monitor *m)
 void
 attach(Client *c)
 {
+	instlog("  attach(0x%lx)\n", c->win);
 	c->next = c->mon->clients;
 	c->mon->clients = c;
 }
@@ -448,6 +457,7 @@ attach(Client *c)
 void
 attachabove(Client *c)
 {
+	instlog("  attachabove(0x%lx)\n", c->win);
 	if (c->mon->sel == NULL || c->mon->sel == c->mon->clients || c->mon->sel->isfloating) {
 		attach(c);
 		return;
@@ -462,6 +472,7 @@ attachabove(Client *c)
 void
 attachstack(Client *c)
 {
+	instlog("  attachstack(0x%lx)\n", c->win);
 	c->snext = c->mon->stack;
 	c->mon->stack = c;
 }
@@ -593,6 +604,8 @@ configurenotify(XEvent *e)
 	XConfigureEvent *ev = &e->xconfigure;
 	int dirty;
 
+	instlog("ConfigureNotify(0x%lx on 0x%lx)\n",
+			ev->window, ev->event);
 	/* TODO: updategeom handling sucks, needs to be simplified */
 	if (ev->window == root) {
 		dirty = (sw != ev->width || sh != ev->height);
@@ -613,6 +626,8 @@ configurerequest(XEvent *e)
 	XConfigureRequestEvent *ev = &e->xconfigurerequest;
 	XWindowChanges wc;
 
+	instlog("ConfigureRequest(0x%lx, parent=0x%lx)\n",
+			ev->window, ev->parent);
 	if ((c = wintoclient(ev->window))) {
 		if (ev->value_mask & CWBorderWidth)
 			c->bw = ev->border_width;
@@ -678,6 +693,8 @@ destroynotify(XEvent *e)
 	Client *c;
 	XDestroyWindowEvent *ev = &e->xdestroywindow;
 
+	instlog("DestroyNotify(0x%lx on 0x%lx)\n",
+			ev->window, ev->event);
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
 }
@@ -687,6 +704,7 @@ detach(Client *c)
 {
 	Client **tc;
 
+	instlog("  detach(0x%lx)\n", c->win);
 	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
 }
@@ -696,6 +714,7 @@ detachstack(Client *c)
 {
 	Client **tc, *t;
 
+	instlog("  detachstack(0x%lx)\n", c->win);
 	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
 
@@ -725,6 +744,7 @@ dispatchcmd(void)
 	while ((end = memchr(buf, '\n', n))) {
 		if (!drop) {
 			*end = '\0';
+			instlog("STDIN -> %s\n", buf);
 			for (i = 0; i < LENGTH(commands); i++) {
 				if (strcmp(commands[i].name, buf) == 0) {
 					commands[i].func(&commands[i].arg);
@@ -806,6 +826,7 @@ enternotify(XEvent *e)
 	Monitor *m;
 	XCrossingEvent *ev = &e->xcrossing;
 
+	instlog("EnterNotify(0x%lx)\n", ev->window);
 	if ((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != root)
 		return;
 	c = wintoclient(ev->window);
@@ -827,11 +848,16 @@ evpredicate()
 void
 focus(Client *c)
 {
+	if (c)
+		instlog("  focus(0x%lx)\n", c->win);
+	else
+		instlog("  focus(NULL)\n");
 	if (!c || !ISVISIBLE(c))
 		for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext);
 	if (selmon->sel && selmon->sel != c)
 		unfocus(selmon->sel, 0);
 	if (c) {
+		instlog("   - focusing 0x%lx\n", c->win);
 		if (c->mon != selmon)
 			selmon = c->mon;
 		if (c->isurgent)
@@ -842,6 +868,7 @@ focus(Client *c)
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
 		setfocus(c);
 	} else {
+		instlog("   - focusing root\n");
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
 		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
 	}
@@ -855,6 +882,7 @@ focusin(XEvent *e)
 {
 	XFocusChangeEvent *ev = &e->xfocus;
 
+	instlog("FocusIn(0x%lx)\n", ev->window);
 	if (selmon->sel && ev->window != selmon->sel->win)
 		setfocus(selmon->sel);
 }
@@ -1076,6 +1104,7 @@ manage(Window w, XWindowAttributes *wa)
 	Window trans = None;
 	XWindowChanges wc;
 
+	instlog("  manage(0x%lx)\n", w);
 	c = ecalloc(1, sizeof(Client));
 	c->win = w;
 	/* geometry */
@@ -1157,6 +1186,8 @@ maprequest(XEvent *e)
 	static XWindowAttributes wa;
 	XMapRequestEvent *ev = &e->xmaprequest;
 
+	instlog("MapRequest(0x%lx, parent=0x%lx)\n",
+			ev->window, ev->parent);
 	if (!XGetWindowAttributes(dpy, ev->window, &wa))
 		return;
 	if (wa.override_redirect)
@@ -1411,6 +1442,7 @@ restack(Monitor *m)
 	XEvent ev;
 	XWindowChanges wc;
 
+	instlog("  restack()\n");
 	drawbar(m);
 	if (!m->sel)
 		return;
@@ -1473,6 +1505,7 @@ scan(void)
 	Window d1, d2, *wins = NULL;
 	XWindowAttributes wa;
 
+	instlog("  scan()\n");
 	if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
 		for (i = 0; i < num; i++) {
 			if (!XGetWindowAttributes(dpy, wins[i], &wa)
@@ -1546,6 +1579,7 @@ sendevent(Client *c, Atom proto)
 void
 setfocus(Client *c)
 {
+	instlog("  setfocus(0x%lx)\n", c->win);
 	if (!c->neverfocus) {
 		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 		XChangeProperty(dpy, root, netatom[NetActiveWindow],
@@ -1619,6 +1653,7 @@ setup(void)
 	XSetWindowAttributes wa;
 	Atom utf8string;
 
+	instlog("  setup()\n");
 	/* clean up any zombies immediately */
 	sigchld(0);
 
@@ -1695,6 +1730,7 @@ showhide(Client *c)
 {
 	if (!c)
 		return;
+	instlog("  showhide(0x%lx)\n", c->win);
 	if (ISVISIBLE(c)) {
 		/* show clients top down */
 		XMapWindow(dpy, c->win);
@@ -1823,6 +1859,7 @@ unfocus(Client *c, int setfocus)
 {
 	if (!c)
 		return;
+	instlog("  unfocus(0x%lx)\n", c->win);
 	grabbuttons(c, 0);
 	XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
 	if (setfocus) {
@@ -1837,6 +1874,7 @@ unmanage(Client *c, int destroyed)
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
+	instlog("  unmanage(0x%lx, %d)\n", c->win, destroyed);
 	detach(c);
 	detachstack(c);
 	if (!destroyed) {
@@ -1862,6 +1900,8 @@ unmapnotify(XEvent *e)
 	Client *c;
 	XUnmapEvent *ev = &e->xunmap;
 
+	instlog("UnmapNotify(0x%lx on 0x%lx)\n",
+			ev->window, ev->event);
 	if (ev->event != root)
 		return;
 	if ((c = wintoclient(ev->window))) {
@@ -2093,6 +2133,7 @@ warp(const Client *c) {
 
 	if(!c)
 		return;
+	instlog("  warp(0x%lx)\n", c->win);
 	XQueryPointer(dpy, root, &dummy, &dummy, &x, &y, &di, &di, &dui);
 	if(x > c->x && y > c->y && x < c->x + c->w && y < c->y + c->h)
 		return;
