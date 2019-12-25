@@ -385,6 +385,7 @@ arrange(Monitor *m)
 		showhide(m->stack);
 	if (m) {
 		arrangemon(m);
+		drawbar(m);
 		restack(m);
 	} else for (m = mons; m; m = m->next)
 		arrangemon(m);
@@ -444,6 +445,7 @@ buttonpress(XEvent *e)
 			click = ClkWinTitle;
 	} else if ((c = wintoclient(ev->window))) {
 		focus(c);
+		drawbar(selmon);
 		restack(selmon);
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 		click = ClkClientWin;
@@ -850,6 +852,7 @@ focusstack(const Arg *arg)
 	}
 	if (c) {
 		focus(c);
+		drawbar(selmon);
 		restack(selmon);
 	}
 }
@@ -1144,6 +1147,7 @@ movemouse(const Arg *arg)
 		return;
 	if (c->isfullscreen) /* no support moving fullscreen windows by mouse */
 		return;
+	drawbar(selmon);
 	restack(selmon);
 	ocx = c->x;
 	ocy = c->y;
@@ -1290,6 +1294,7 @@ resizemouse(const Arg *arg)
 		return;
 	if (c->isfullscreen) /* no support resizing fullscreen windows by mouse */
 		return;
+	drawbar(selmon);
 	restack(selmon);
 	ocx = c->x;
 	ocy = c->y;
@@ -1341,7 +1346,6 @@ restack(Monitor *m)
 	XEvent ev;
 	XWindowChanges wc;
 
-	drawbar(m);
 	if (!m->sel)
 		return;
 	if (m->sel->isfloating || !m->lt[m->sellt]->arrange)
