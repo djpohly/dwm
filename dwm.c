@@ -203,6 +203,7 @@ static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
+static void showhidemon(Monitor *m);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
@@ -379,16 +380,21 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 void
 arrange(Monitor *m)
 {
-	if (m)
-		showhide(m->stack);
-	else for (m = mons; m; m = m->next)
-		showhide(m->stack);
 	if (m) {
 		arrangemon(m);
 		drawbar(m);
 		restack(m);
 	} else for (m = mons; m; m = m->next)
 		arrangemon(m);
+}
+
+void
+showhidemon(Monitor *m)
+{
+	if (m)
+		showhide(m->stack);
+	else for (m = mons; m; m = m->next)
+		showhide(m->stack);
 }
 
 void
@@ -571,6 +577,7 @@ configurenotify(XEvent *e)
 				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
 			}
 			focus(NULL);
+			showhidemon(NULL);
 			arrange(NULL);
 		}
 	}
@@ -969,6 +976,7 @@ void
 incnmaster(const Arg *arg)
 {
 	selmon->nmaster = MAX(selmon->nmaster + arg->i, 0);
+	showhidemon(selmon);
 	arrange(selmon);
 }
 
@@ -1073,6 +1081,7 @@ manage(Window w, XWindowAttributes *wa)
 	if (c->mon == selmon)
 		unfocus(selmon->sel, 0);
 	c->mon->sel = c;
+	showhidemon(c->mon);
 	arrange(c->mon);
 	XMapWindow(dpy, c->win);
 	focus(NULL);
@@ -1218,8 +1227,10 @@ propertynotify(XEvent *e)
 		default: break;
 		case XA_WM_TRANSIENT_FOR:
 			if (!c->isfloating && (XGetTransientForHint(dpy, c->win, &trans)) &&
-				(c->isfloating = (wintoclient(trans)) != NULL))
+				(c->isfloating = (wintoclient(trans)) != NULL)) {
+				showhidemon(c->mon);
 				arrange(c->mon);
+			}
 			break;
 		case XA_WM_NORMAL_HINTS:
 			updatesizehints(c);
@@ -1414,6 +1425,7 @@ sendmon(Client *c, Monitor *m)
 	attach(c);
 	attachstack(c);
 	focus(NULL);
+	showhidemon(NULL);
 	arrange(NULL);
 }
 
@@ -1487,6 +1499,7 @@ setfullscreen(Client *c, int fullscreen)
 		c->w = c->oldw;
 		c->h = c->oldh;
 		resizeclient(c, c->x, c->y, c->w, c->h);
+		showhidemon(c->mon);
 		arrange(c->mon);
 	}
 }
@@ -1499,9 +1512,10 @@ setlayout(const Arg *arg)
 	if (arg && arg->v)
 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
-	if (selmon->sel)
+	if (selmon->sel) {
+		showhidemon(selmon);
 		arrange(selmon);
-	else
+	} else
 		drawbar(selmon);
 }
 
@@ -1517,6 +1531,7 @@ setmfact(const Arg *arg)
 	if (f < 0.1 || f > 0.9)
 		return;
 	selmon->mfact = f;
+	showhidemon(selmon);
 	arrange(selmon);
 }
 
@@ -1652,6 +1667,7 @@ tag(const Arg *arg)
 	if (selmon->sel && arg->ui & TAGMASK) {
 		selmon->sel->tags = arg->ui & TAGMASK;
 		focus(NULL);
+		showhidemon(selmon);
 		arrange(selmon);
 	}
 }
@@ -1696,6 +1712,7 @@ togglebar(const Arg *arg)
 	selmon->showbar = !selmon->showbar;
 	updatebarpos(selmon);
 	XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
+	showhidemon(selmon);
 	arrange(selmon);
 }
 
@@ -1710,6 +1727,7 @@ togglefloating(const Arg *arg)
 	if (selmon->sel->isfloating)
 		resize(selmon->sel, selmon->sel->x, selmon->sel->y,
 			selmon->sel->w, selmon->sel->h, 0);
+	showhidemon(selmon);
 	arrange(selmon);
 }
 
@@ -1724,6 +1742,7 @@ toggletag(const Arg *arg)
 	if (newtags) {
 		selmon->sel->tags = newtags;
 		focus(NULL);
+		showhidemon(selmon);
 		arrange(selmon);
 	}
 }
@@ -1736,6 +1755,7 @@ toggleview(const Arg *arg)
 	if (newtagset) {
 		selmon->tagset[selmon->seltags] = newtagset;
 		focus(NULL);
+		showhidemon(selmon);
 		arrange(selmon);
 	}
 }
@@ -1775,6 +1795,7 @@ unmanage(Client *c, int destroyed)
 	free(c);
 	focus(NULL);
 	updateclientlist();
+	showhidemon(m);
 	arrange(m);
 }
 
@@ -2035,6 +2056,7 @@ view(const Arg *arg)
 	if (arg->ui & TAGMASK)
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
 	focus(NULL);
+	showhidemon(selmon);
 	arrange(selmon);
 }
 
@@ -2118,6 +2140,7 @@ zoom(const Arg *arg)
 	detach(c);
 	attach(c);
 	focus(c);
+	showhidemon(c->mon);
 	arrange(c->mon);
 }
 
