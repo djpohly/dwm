@@ -147,7 +147,6 @@ static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interac
 static void arrange(Monitor *m);
 static void arrangemon(Monitor *m);
 static void attach(Client *c);
-static void attachstack(Client *c);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void cleanup(void);
@@ -159,7 +158,6 @@ static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
-static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
@@ -410,11 +408,7 @@ attach(Client *c)
 {
 	c->next = c->mon->clients;
 	c->mon->clients = c;
-}
 
-void
-attachstack(Client *c)
-{
 	c->snext = c->mon->stack;
 	c->mon->stack = c;
 }
@@ -665,16 +659,10 @@ destroynotify(XEvent *e)
 void
 detach(Client *c)
 {
-	Client **tc;
+	Client **tc, *t;
 
 	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
-}
-
-void
-detachstack(Client *c)
-{
-	Client **tc, *t;
 
 	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
@@ -683,6 +671,18 @@ detachstack(Client *c)
 		for (t = c->mon->stack; t && !ISVISIBLE(t); t = t->snext);
 		c->mon->sel = t;
 	}
+}
+
+void
+tostacktop(Client *c)
+{
+	Client **tc;
+
+	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
+
+	c->snext = c->mon->stack;
+	c->mon->stack = c;
 }
 
 Monitor *
@@ -800,8 +800,7 @@ focus(Client *c)
 			selmon = c->mon;
 		if (c->isurgent)
 			seturgent(c, 0);
-		detachstack(c);
-		attachstack(c);
+		tostacktop(c);
 		grabbuttons(c, 1);
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
 		setfocus(c);
@@ -1073,7 +1072,6 @@ manage(Window w, XWindowAttributes *wa)
 	if (c->isfloating)
 		XRaiseWindow(dpy, c->win);
 	attach(c);
-	attachstack(c);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
@@ -1419,11 +1417,9 @@ sendmon(Client *c, Monitor *m)
 		return;
 	unfocus(c, 1);
 	detach(c);
-	detachstack(c);
 	c->mon = m;
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	attach(c);
-	attachstack(c);
 	focus(NULL);
 	showhidemon(NULL);
 	arrange(NULL);
@@ -1780,7 +1776,6 @@ unmanage(Client *c, int destroyed)
 	XWindowChanges wc;
 
 	detach(c);
-	detachstack(c);
 	if (!destroyed) {
 		wc.border_width = c->oldbw;
 		XGrabServer(dpy); /* avoid race conditions */
@@ -1909,11 +1904,9 @@ updategeom(void)
 				for (m = mons; m && m->next; m = m->next);
 				while ((c = m->clients)) {
 					dirty = 1;
-					m->clients = c->next;
-					detachstack(c);
+					detach(c);
 					c->mon = mons;
 					attach(c);
-					attachstack(c);
 				}
 				if (m == selmon)
 					selmon = mons;
