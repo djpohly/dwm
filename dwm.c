@@ -379,8 +379,6 @@ arrange(Monitor *m)
 {
 	if (m) {
 		arrangemon(m);
-		drawbar(m);
-		restack(m);
 	} else for (m = mons; m; m = m->next)
 		arrangemon(m);
 }
@@ -982,6 +980,8 @@ incnmaster(const Arg *arg)
 	selmon->nmaster = MAX(selmon->nmaster + arg->i, 0);
 	showhidemon(selmon);
 	arrange(selmon);
+	drawbar(selmon);
+	restack(selmon);
 }
 
 #ifdef XINERAMA
@@ -1085,6 +1085,8 @@ manage(Window w, XWindowAttributes *wa)
 	c->mon->sel = c;
 	showhidemon(c->mon);
 	arrange(c->mon);
+	drawbar(c->mon);
+	restack(c->mon);
 	XMapWindow(dpy, c->win);
 	focus(NULL);
 }
@@ -1232,6 +1234,8 @@ propertynotify(XEvent *e)
 				(c->isfloating = (wintoclient(trans)) != NULL)) {
 				showhidemon(c->mon);
 				arrange(c->mon);
+				drawbar(c->mon);
+				restack(c->mon);
 			}
 			break;
 		case XA_WM_NORMAL_HINTS:
@@ -1499,6 +1503,8 @@ setfullscreen(Client *c, int fullscreen)
 		resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
 		showhidemon(c->mon);
 		arrange(c->mon);
+		drawbar(c->mon);
+		restack(c->mon);
 	}
 }
 
@@ -1513,6 +1519,8 @@ setlayout(const Arg *arg)
 	if (selmon->sel) {
 		showhidemon(selmon);
 		arrange(selmon);
+		drawbar(selmon);
+		restack(selmon);
 	} else
 		drawbar(selmon);
 }
@@ -1531,6 +1539,8 @@ setmfact(const Arg *arg)
 	selmon->mfact = f;
 	showhidemon(selmon);
 	arrange(selmon);
+	drawbar(selmon);
+	restack(selmon);
 }
 
 void
@@ -1667,6 +1677,8 @@ tag(const Arg *arg)
 		focus(NULL);
 		showhidemon(selmon);
 		arrange(selmon);
+		drawbar(selmon);
+		restack(selmon);
 	}
 }
 
@@ -1712,6 +1724,8 @@ togglebar(const Arg *arg)
 	XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
 	showhidemon(selmon);
 	arrange(selmon);
+	drawbar(selmon);
+	restack(selmon);
 }
 
 void
@@ -1727,6 +1741,8 @@ togglefloating(const Arg *arg)
 			selmon->sel->w, selmon->sel->h, 0);
 	showhidemon(selmon);
 	arrange(selmon);
+	drawbar(selmon);
+	restack(selmon);
 }
 
 void
@@ -1742,6 +1758,8 @@ toggletag(const Arg *arg)
 		focus(NULL);
 		showhidemon(selmon);
 		arrange(selmon);
+		drawbar(selmon);
+		restack(selmon);
 	}
 }
 
@@ -1755,6 +1773,8 @@ toggleview(const Arg *arg)
 		focus(NULL);
 		showhidemon(selmon);
 		arrange(selmon);
+		drawbar(selmon);
+		restack(selmon);
 	}
 }
 
@@ -1794,6 +1814,8 @@ unmanage(Client *c, int destroyed)
 	updateclientlist();
 	showhidemon(m);
 	arrange(m);
+	drawbar(m);
+	restack(m);
 }
 
 void
@@ -2051,6 +2073,8 @@ view(const Arg *arg)
 	focus(NULL);
 	showhidemon(selmon);
 	arrange(selmon);
+	drawbar(selmon);
+	restack(selmon);
 }
 
 Client *
@@ -2135,6 +2159,8 @@ zoom(const Arg *arg)
 	focus(c);
 	showhidemon(c->mon);
 	arrange(c->mon);
+	drawbar(c->mon);
+	restack(c->mon);
 }
 
 int
