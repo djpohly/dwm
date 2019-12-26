@@ -417,8 +417,7 @@ attachto(Client *c, Monitor *m)
 			c->mon->sel = t;
 		}
 	}
-	if (m) {
-		c->mon = m;
+	if ((c->mon = m)) {
 		c->next = c->mon->clients;
 		c->mon->clients = c;
 
