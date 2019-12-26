@@ -145,7 +145,7 @@ typedef struct {
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
-static void arrangemon(Monitor *m);
+static void arrangeall(void);
 static void attachto(Client *c, Monitor *m);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
@@ -375,12 +375,11 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 }
 
 void
-arrange(Monitor *m)
+arrangeall()
 {
-	if (m) {
-		arrangemon(m);
-	} else for (m = mons; m; m = m->next)
-		arrangemon(m);
+	Monitor *m;
+	for (m = mons; m; m = m->next)
+		arrange(m);
 }
 
 void
@@ -393,7 +392,7 @@ showhidemon(Monitor *m)
 }
 
 void
-arrangemon(Monitor *m)
+arrange(Monitor *m)
 {
 	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
 	if (m->lt[m->sellt]->arrange)
@@ -588,7 +587,7 @@ configurenotify(XEvent *e)
 			}
 			focus(NULL);
 			showhidemon(NULL);
-			arrange(NULL);
+			arrangeall();
 		}
 	}
 }
@@ -1428,7 +1427,7 @@ sendmon(Client *c, Monitor *m)
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	focus(NULL);
 	showhidemon(NULL);
-	arrange(NULL);
+	arrangeall();
 }
 
 void
