@@ -442,6 +442,7 @@ buttonpress(XEvent *e)
 		unfocus(selmon->sel, 1);
 		selmon = m;
 		focus(NULL);
+		drawbars();
 	}
 	if (ev->window == selmon->barwin) {
 		i = x = 0;
@@ -585,6 +586,7 @@ configurenotify(XEvent *e)
 				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
 			}
 			focus(NULL);
+			drawbars();
 			showhideall();
 			arrangeall();
 		}
@@ -777,6 +779,7 @@ enternotify(XEvent *e)
 	} else if (!c || c == selmon->sel)
 		return;
 	focus(c);
+	drawbars();
 }
 
 void
@@ -810,7 +813,6 @@ focus(Client *c)
 		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
 	}
 	selmon->sel = c;
-	drawbars();
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
@@ -835,6 +837,7 @@ focusmon(const Arg *arg)
 	unfocus(selmon->sel, 0);
 	selmon = m;
 	focus(NULL);
+	drawbars();
 }
 
 void
@@ -1087,6 +1090,7 @@ manage(Window w, XWindowAttributes *wa)
 	restack(c->mon);
 	XMapWindow(dpy, c->win);
 	focus(NULL);
+	drawbars();
 }
 
 void
@@ -1141,6 +1145,7 @@ motionnotify(XEvent *e)
 		unfocus(selmon->sel, 1);
 		selmon = m;
 		focus(NULL);
+		drawbars();
 	}
 	mon = m;
 }
@@ -1203,6 +1208,7 @@ movemouse(const Arg *arg)
 		sendmon(c, m);
 		selmon = m;
 		focus(NULL);
+		drawbars();
 	}
 }
 
@@ -1351,6 +1357,7 @@ resizemouse(const Arg *arg)
 		sendmon(c, m);
 		selmon = m;
 		focus(NULL);
+		drawbars();
 	}
 }
 
@@ -1425,6 +1432,7 @@ sendmon(Client *c, Monitor *m)
 	attachto(c, m);
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	focus(NULL);
+	drawbars();
 	showhideall();
 	arrangeall();
 }
@@ -1609,6 +1617,7 @@ setup(void)
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
 	focus(NULL);
+	drawbars();
 }
 
 
@@ -1673,6 +1682,7 @@ tag(const Arg *arg)
 	if (selmon->sel && arg->ui & TAGMASK) {
 		selmon->sel->tags = arg->ui & TAGMASK;
 		focus(NULL);
+		drawbars();
 		showhide(selmon->stack);
 		arrange(selmon);
 		drawbar(selmon);
@@ -1754,6 +1764,7 @@ toggletag(const Arg *arg)
 	if (newtags) {
 		selmon->sel->tags = newtags;
 		focus(NULL);
+		drawbars();
 		showhide(selmon->stack);
 		arrange(selmon);
 		drawbar(selmon);
@@ -1769,6 +1780,7 @@ toggleview(const Arg *arg)
 	if (newtagset) {
 		selmon->tagset[selmon->seltags] = newtagset;
 		focus(NULL);
+		drawbars();
 		showhide(selmon->stack);
 		arrange(selmon);
 		drawbar(selmon);
@@ -1809,6 +1821,7 @@ unmanage(Client *c, int destroyed)
 	}
 	free(c);
 	focus(NULL);
+	drawbars();
 	updateclientlist();
 	showhide(m->stack);
 	arrange(m);
@@ -2069,6 +2082,7 @@ view(const Arg *arg)
 	if (arg->ui & TAGMASK)
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
 	focus(NULL);
+	drawbars();
 	showhide(selmon->stack);
 	arrange(selmon);
 	drawbar(selmon);
@@ -2155,6 +2169,7 @@ zoom(const Arg *arg)
 	toclienttop(c);
 	tostacktop(c);
 	focus(c);
+	drawbars();
 	showhide(c->mon->stack);
 	arrange(c->mon);
 	drawbar(c->mon);
