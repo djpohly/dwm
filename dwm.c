@@ -608,22 +608,14 @@ configurerequest(XEvent *e)
 			c->bw = ev->border_width;
 		else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
 			m = c->mon;
-			if (ev->value_mask & CWX) {
-				c->oldx = c->x;
+			if (ev->value_mask & CWX)
 				c->x = m->mx + ev->x;
-			}
-			if (ev->value_mask & CWY) {
-				c->oldy = c->y;
+			if (ev->value_mask & CWY)
 				c->y = m->my + ev->y;
-			}
-			if (ev->value_mask & CWWidth) {
-				c->oldw = c->w;
+			if (ev->value_mask & CWWidth)
 				c->w = ev->width;
-			}
-			if (ev->value_mask & CWHeight) {
-				c->oldh = c->h;
+			if (ev->value_mask & CWHeight)
 				c->h = ev->height;
-			}
 			if ((c->x + c->w) > m->mx + m->mw && c->isfloating)
 				c->x = m->mx + (m->mw / 2 - WIDTH(c) / 2); /* center in x direction */
 			if ((c->y + c->h) > m->my + m->mh && c->isfloating)
@@ -1292,10 +1284,10 @@ resizeclient(Client *c, int x, int y, int w, int h)
 {
 	XWindowChanges wc;
 
-	c->oldx = c->x; c->x = wc.x = x;
-	c->oldy = c->y; c->y = wc.y = y;
-	c->oldw = c->w; c->w = wc.width = w;
-	c->oldh = c->h; c->h = wc.height = h;
+	c->x = wc.x = x;
+	c->y = wc.y = y;
+	c->w = wc.width = w;
+	c->h = wc.height = h;
 	wc.border_width = c->bw;
 	XConfigureWindow(dpy, c->win, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
 	configure(c);
@@ -1492,6 +1484,10 @@ setfullscreen(Client *c, int fullscreen)
 		c->oldbw = c->bw;
 		c->bw = 0;
 		c->isfloating = 1;
+		c->oldx = c->x;
+		c->oldy = c->y;
+		c->oldw = c->w;
+		c->oldh = c->h;
 		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
 		XRaiseWindow(dpy, c->win);
 	} else if (!fullscreen && c->isfullscreen){
@@ -1500,11 +1496,7 @@ setfullscreen(Client *c, int fullscreen)
 		c->isfullscreen = 0;
 		c->isfloating = c->oldstate;
 		c->bw = c->oldbw;
-		c->x = c->oldx;
-		c->y = c->oldy;
-		c->w = c->oldw;
-		c->h = c->oldh;
-		resizeclient(c, c->x, c->y, c->w, c->h);
+		resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
 		showhidemon(c->mon);
 		arrange(c->mon);
 	}
