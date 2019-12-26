@@ -146,7 +146,7 @@ static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
 static void arrangemon(Monitor *m);
-static void attach(Client *c);
+static void attachto(Client *c, Monitor *m);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void cleanup(void);
@@ -157,7 +157,6 @@ static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
-static void detach(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
@@ -299,7 +298,7 @@ applyrules(Client *c)
 			c->tags |= r->tags;
 			for (m = mons; m && m->num != r->monitor; m = m->next);
 			if (m)
-				c->mon = m;
+				attachto(c, m);
 		}
 	}
 	if (ch.res_class)
@@ -404,13 +403,32 @@ arrangemon(Monitor *m)
 }
 
 void
-attach(Client *c)
+attachto(Client *c, Monitor *m)
 {
-	c->next = c->mon->clients;
-	c->mon->clients = c;
+	Client **tc, *t;
 
-	c->snext = c->mon->stack;
-	c->mon->stack = c;
+	if (c->mon == m)
+		return;
+	if (c->mon) {
+		for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
+		*tc = c->next;
+
+		for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+		*tc = c->snext;
+
+		if (c == c->mon->sel) {
+			for (t = c->mon->stack; t && !ISVISIBLE(t); t = t->snext);
+			c->mon->sel = t;
+		}
+	}
+	if (m) {
+		c->mon = m;
+		c->next = c->mon->clients;
+		c->mon->clients = c;
+
+		c->snext = c->mon->stack;
+		c->mon->stack = c;
+	}
 }
 
 void
@@ -657,23 +675,6 @@ destroynotify(XEvent *e)
 }
 
 void
-detach(Client *c)
-{
-	Client **tc, *t;
-
-	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
-	*tc = c->next;
-
-	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
-	*tc = c->snext;
-
-	if (c == c->mon->sel) {
-		for (t = c->mon->stack; t && !ISVISIBLE(t); t = t->snext);
-		c->mon->sel = t;
-	}
-}
-
-void
 tostacktop(Client *c)
 {
 	Client **tc;
@@ -683,6 +684,18 @@ tostacktop(Client *c)
 
 	c->snext = c->mon->stack;
 	c->mon->stack = c;
+}
+
+void
+toclienttop(Client *c)
+{
+	Client **tc;
+
+	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+
+	c->next = c->mon->clients;
+	c->mon->clients = c;
 }
 
 Monitor *
@@ -1041,10 +1054,10 @@ manage(Window w, XWindowAttributes *wa)
 
 	updatetitle(c);
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
-		c->mon = t->mon;
+		attachto(c, t->mon);
 		c->tags = t->tags;
 	} else {
-		c->mon = selmon;
+		attachto(c, selmon);
 		applyrules(c);
 	}
 
@@ -1071,7 +1084,6 @@ manage(Window w, XWindowAttributes *wa)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating)
 		XRaiseWindow(dpy, c->win);
-	attach(c);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
@@ -1416,10 +1428,8 @@ sendmon(Client *c, Monitor *m)
 	if (c->mon == m)
 		return;
 	unfocus(c, 1);
-	detach(c);
-	c->mon = m;
+	attachto(c, m);
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
-	attach(c);
 	focus(NULL);
 	showhidemon(NULL);
 	arrange(NULL);
@@ -1775,7 +1785,7 @@ unmanage(Client *c, int destroyed)
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
-	detach(c);
+	attachto(c, NULL);
 	if (!destroyed) {
 		wc.border_width = c->oldbw;
 		XGrabServer(dpy); /* avoid race conditions */
@@ -1904,9 +1914,7 @@ updategeom(void)
 				for (m = mons; m && m->next; m = m->next);
 				while ((c = m->clients)) {
 					dirty = 1;
-					detach(c);
-					c->mon = mons;
-					attach(c);
+					attachto(c, mons);
 				}
 				if (m == selmon)
 					selmon = mons;
@@ -2130,8 +2138,8 @@ zoom(const Arg *arg)
 	if (c == nexttiled(selmon->clients))
 		if (!c || !(c = nexttiled(c->next)))
 			return;
-	detach(c);
-	attach(c);
+	toclienttop(c);
+	tostacktop(c);
 	focus(c);
 	showhidemon(c->mon);
 	arrange(c->mon);
