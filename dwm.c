@@ -145,6 +145,7 @@ typedef struct {
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
+static void arrangemon(Monitor *m);
 static void attachto(Client *c, Monitor *m);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
@@ -165,6 +166,7 @@ static void focus(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
+static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
@@ -192,12 +194,13 @@ static void scan(void);
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
-static void setxfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
+static void setxfocus(Client *c);
+static void shar(Monitor *m);
 static void showhide(Client *c);
 static void showhidemon(Monitor *m);
 static void sigchld(int unused);
@@ -206,10 +209,12 @@ static void selectmon(Monitor *m);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
+static void toclienttop(Client *c);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
+static void tostacktop(Client *c);
 static void setfocus(Client *c);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
@@ -375,19 +380,19 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 }
 
 void
+arrange(Monitor *m)
+{
+	if (m->lt[m->sellt]->arrange)
+		m->lt[m->sellt]->arrange(m);
+}
+
+void
 arrangemon(Monitor *m)
 {
 	if (m)
 		arrange(m);
 	else for (m = mons; m; m = m->next)
 		arrange(m);
-}
-
-void
-arrange(Monitor *m)
-{
-	if (m->lt[m->sellt]->arrange)
-		m->lt[m->sellt]->arrange(m);
 }
 
 void
@@ -554,17 +559,6 @@ configure(Client *c)
 }
 
 void
-shar(Monitor *m)
-{
-	showhidemon(m);
-	arrangemon(m);
-	if (m)
-		restack(m);
-	else
-		focus(NULL);
-}
-
-void
 configurenotify(XEvent *e)
 {
 	Monitor *m;
@@ -661,30 +655,6 @@ destroynotify(XEvent *e)
 
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
-}
-
-void
-tostacktop(Client *c)
-{
-	Client **tc;
-
-	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
-	*tc = c->snext;
-
-	c->snext = c->mon->stack;
-	c->mon->stack = c;
-}
-
-void
-toclienttop(Client *c)
-{
-	Client **tc;
-
-	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
-	*tc = c->next;
-
-	c->next = c->mon->clients;
-	c->mon->clients = c;
 }
 
 Monitor *
@@ -1420,26 +1390,6 @@ scan(void)
 	}
 }
 
-void
-sendmon(Client *c, Monitor *m)
-{
-	Monitor *oldmon = c->mon;
-	attachto(c, m);
-	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
-	drawbar(oldmon);
-	drawbar(m);
-	shar(NULL);
-}
-
-void
-setclientstate(Client *c, long state)
-{
-	long data[] = { state, None };
-
-	XChangeProperty(dpy, c->win, wmatom[WMState], wmatom[WMState], 32,
-		PropModeReplace, (unsigned char *)data, 2);
-}
-
 int
 sendevent(Client *c, Atom proto)
 {
@@ -1466,18 +1416,23 @@ sendevent(Client *c, Atom proto)
 }
 
 void
-setxfocus(Client *c)
+sendmon(Client *c, Monitor *m)
 {
-	XSetInputFocus(dpy, c ? c->win : root, RevertToPointerRoot, CurrentTime);
-	if (!c) {
-		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
-		return;
-	}
-	if (!c->neverfocus)
-		XChangeProperty(dpy, root, netatom[NetActiveWindow],
-			XA_WINDOW, 32, PropModeReplace,
-			(unsigned char *) &(c->win), 1);
-	sendevent(c, wmatom[WMTakeFocus]);
+	Monitor *oldmon = c->mon;
+	attachto(c, m);
+	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
+	drawbar(oldmon);
+	drawbar(m);
+	shar(NULL);
+}
+
+void
+setclientstate(Client *c, long state)
+{
+	long data[] = { state, None };
+
+	XChangeProperty(dpy, c->win, wmatom[WMState], wmatom[WMState], 32,
+		PropModeReplace, (unsigned char *)data, 2);
 }
 
 void
@@ -1631,12 +1586,29 @@ seturgent(Client *c, int urg)
 }
 
 void
-showhidemon(Monitor *m)
+setxfocus(Client *c)
 {
+	XSetInputFocus(dpy, c ? c->win : root, RevertToPointerRoot, CurrentTime);
+	if (!c) {
+		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
+		return;
+	}
+	if (!c->neverfocus)
+		XChangeProperty(dpy, root, netatom[NetActiveWindow],
+			XA_WINDOW, 32, PropModeReplace,
+			(unsigned char *) &(c->win), 1);
+	sendevent(c, wmatom[WMTakeFocus]);
+}
+
+void
+shar(Monitor *m)
+{
+	showhidemon(m);
+	arrangemon(m);
 	if (m)
-		showhide(m->stack);
-	else for (m = mons; m; m = m->next)
-		showhide(m->stack);
+		restack(m);
+	else
+		focus(NULL);
 }
 
 void
@@ -1655,6 +1627,15 @@ showhide(Client *c)
 		showhide(c->snext);
 		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
 	}
+}
+
+void
+showhidemon(Monitor *m)
+{
+	if (m)
+		showhide(m->stack);
+	else for (m = mons; m; m = m->next)
+		showhide(m->stack);
 }
 
 void
@@ -1740,6 +1721,18 @@ tile(Monitor *m)
 }
 
 void
+toclienttop(Client *c)
+{
+	Client **tc;
+
+	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+
+	c->next = c->mon->clients;
+	c->mon->clients = c;
+}
+
+void
 togglebar(const Arg *arg)
 {
 	selmon->showbar = !selmon->showbar;
@@ -1790,6 +1783,18 @@ toggleview(const Arg *arg)
 		focus(NULL);
 		shar(selmon);
 	}
+}
+
+void
+tostacktop(Client *c)
+{
+	Client **tc;
+
+	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
+
+	c->snext = c->mon->stack;
+	c->mon->stack = c;
 }
 
 void
@@ -1847,6 +1852,19 @@ unmapnotify(XEvent *e)
 }
 
 void
+updatebarpos(Monitor *m)
+{
+	m->wy = m->my;
+	m->wh = m->mh;
+	if (m->showbar) {
+		m->wh -= bh;
+		m->by = m->topbar ? m->wy : m->wy + m->wh;
+		m->wy = m->topbar ? m->wy + bh : m->wy;
+	} else
+		m->by = -bh;
+}
+
+void
 updatebars(void)
 {
 	Monitor *m;
@@ -1866,19 +1884,6 @@ updatebars(void)
 		XMapRaised(dpy, m->barwin);
 		XSetClassHint(dpy, m->barwin, &ch);
 	}
-}
-
-void
-updatebarpos(Monitor *m)
-{
-	m->wy = m->my;
-	m->wh = m->mh;
-	if (m->showbar) {
-		m->wh -= bh;
-		m->by = m->topbar ? m->wy : m->wy + m->wh;
-		m->wy = m->topbar ? m->wy + bh : m->wy;
-	} else
-		m->by = -bh;
 }
 
 void
