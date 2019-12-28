@@ -1073,11 +1073,7 @@ maprequest(XEvent *e)
 	static XWindowAttributes wa;
 	XMapRequestEvent *ev = &e->xmaprequest;
 
-	if (!XGetWindowAttributes(dpy, ev->window, &wa))
-		return;
-	if (wa.override_redirect)
-		return;
-	if (!wintoclient(ev->window))
+	if (XGetWindowAttributes(dpy, ev->window, &wa) && !wintoclient(ev->window))
 		manage(ev->window, &wa);
 }
 
