@@ -200,7 +200,6 @@ static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void setxfocus(Client *c);
-static void shar(Monitor *m);
 static void showhide(Client *c);
 static void showhidemon(Monitor *m);
 static void sigchld(int unused);
@@ -581,7 +580,9 @@ configurenotify(XEvent *e)
 						resizeclient(c, m->mx, m->my, m->mw, m->mh);
 				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
 			}
-			shar(NULL);
+			showhidemon(NULL);
+			arrangemon(NULL);
+			focus(NULL);
 		}
 	}
 }
@@ -1042,7 +1043,9 @@ manage(Window w, XWindowAttributes *wa)
 	if (ISVISIBLE(c))
 		c->mon->sel = c;
 	drawbar(c->mon); // rearrange stuff in manage?
-	shar(c->mon);
+	showhidemon(c->mon);
+	arrangemon(c->mon);
+	restack(c->mon);
 	XMapWindow(dpy, c->win);
 	focus(NULL);
 }
@@ -1191,7 +1194,9 @@ propertynotify(XEvent *e)
 				(c->isfloating = (wintoclient(trans)) != NULL)) {
 				if (c == c->mon->sel)
 					drawbar(c->mon);
-				shar(c->mon);
+				showhidemon(c->mon);
+				arrangemon(c->mon);
+				restack(c->mon);
 			}
 			break;
 		case XA_WM_NORMAL_HINTS:
@@ -1414,7 +1419,9 @@ sendmon(Client *c, Monitor *m)
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	drawbar(oldmon);
 	drawbar(m);
-	shar(NULL);
+	showhidemon(NULL);
+	arrangemon(NULL);
+	focus(NULL);
 }
 
 void
@@ -1459,7 +1466,9 @@ setfullscreen(Client *c, int fullscreen)
 		c->bw = c->oldbw;
 		// XXX: use resize() here to reapply size hints
 		resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
-		shar(c->mon);
+		showhidemon(c->mon);
+		arrangemon(c->mon);
+		restack(c->mon);
 	}
 }
 
@@ -1472,8 +1481,11 @@ setlayout(const Arg *arg)
 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
 	drawbar(selmon);
-	if (selmon->sel)
-		shar(selmon);
+	if (selmon->sel) {
+		showhidemon(selmon);
+		arrangemon(selmon);
+		restack(selmon);
+	}
 }
 
 /* arg > 1.0 will set mfact absolutely */
@@ -1488,7 +1500,9 @@ setmfact(const Arg *arg)
 	if (f < 0.1 || f > 0.9)
 		return;
 	selmon->mfact = f;
-	shar(selmon);
+	showhidemon(selmon);
+	arrangemon(selmon);
+	restack(selmon);
 }
 
 void
@@ -1592,17 +1606,6 @@ setxfocus(Client *c)
 }
 
 void
-shar(Monitor *m)
-{
-	showhidemon(m);
-	arrangemon(m);
-	if (m)
-		restack(m);
-	else
-		focus(NULL);
-}
-
-void
 showhide(Client *c)
 {
 	if (!c)
@@ -1671,7 +1674,9 @@ tag(const Arg *arg)
 		selmon->sel->tags = arg->ui & TAGMASK;
 		drawbar(selmon);
 		focus(NULL);
-		shar(selmon);
+		showhidemon(selmon);
+		arrangemon(selmon);
+		restack(selmon);
 	}
 }
 
@@ -1729,7 +1734,9 @@ togglebar(const Arg *arg)
 	selmon->showbar = !selmon->showbar;
 	updatebarpos(selmon);
 	XMoveResizeWindow(dpy, selmon->barwin, selmon->wx, selmon->by, selmon->ww, bh);
-	shar(selmon);
+	showhidemon(selmon);
+	arrangemon(selmon);
+	restack(selmon);
 }
 
 void
@@ -1744,7 +1751,9 @@ togglefloating(const Arg *arg)
 	if (selmon->sel->isfloating)
 		resize(selmon->sel, selmon->sel->x, selmon->sel->y,
 			selmon->sel->w, selmon->sel->h, 0);
-	shar(selmon);
+	showhidemon(selmon);
+	arrangemon(selmon);
+	restack(selmon);
 }
 
 void
@@ -1759,7 +1768,9 @@ toggletag(const Arg *arg)
 		selmon->sel->tags = newtags;
 		drawbar(selmon);
 		focus(NULL);
-		shar(selmon);
+		showhidemon(selmon);
+		arrangemon(selmon);
+		restack(selmon);
 	}
 }
 
@@ -1772,7 +1783,9 @@ toggleview(const Arg *arg)
 		selmon->tagset[selmon->seltags] = newtagset;
 		drawbar(selmon);
 		focus(NULL);
-		shar(selmon);
+		showhidemon(selmon);
+		arrangemon(selmon);
+		restack(selmon);
 	}
 }
 
@@ -1825,7 +1838,9 @@ unmanage(Client *c, int destroyed)
 	free(c);
 	focus(NULL);
 	updateclientlist();
-	shar(m);
+	showhidemon(m);
+	arrangemon(m);
+	restack(m);
 }
 
 void
@@ -2087,7 +2102,9 @@ view(const Arg *arg)
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
 	drawbar(selmon);
 	focus(NULL);
-	shar(selmon);
+	showhidemon(selmon);
+	arrangemon(selmon);
+	restack(selmon);
 }
 
 Client *
@@ -2170,7 +2187,9 @@ zoom(const Arg *arg)
 	toclienttop(c);
 	tostacktop(c);
 	focus(c);
-	shar(c->mon);
+	showhidemon(c->mon);
+	arrangemon(c->mon);
+	restack(c->mon);
 }
 
 int
