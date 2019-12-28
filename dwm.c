@@ -2119,13 +2119,13 @@ wintomon(Window w)
 	Client *c;
 	Monitor *m;
 
-	if (w == root && getrootptr(&x, &y))
-		return recttomon(x, y, 1, 1);
 	for (m = mons; m; m = m->next)
 		if (w == m->barwin)
 			return m;
 	if ((c = wintoclient(w)))
 		return c->mon;
+	if (getrootptr(&x, &y))
+		return recttomon(x, y, 1, 1);
 	return selmon;
 }
 
