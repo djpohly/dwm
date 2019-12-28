@@ -573,7 +573,6 @@ configurenotify(XEvent *e)
 		if (updategeom() || dirty) {
 			drw_resize(drw, sw, bh);
 			updatebars();
-			drawbars();
 			for (m = mons; m; m = m->next) {
 				for (c = m->clients; c; c = c->next)
 					if (c->isfullscreen)
@@ -583,6 +582,7 @@ configurenotify(XEvent *e)
 			showhidemon(NULL);
 			arrangemon(NULL);
 			focus(NULL);
+			drawbars();
 		}
 	}
 }
@@ -1042,12 +1042,12 @@ manage(Window w, XWindowAttributes *wa)
 		setfocus(NULL);
 	if (ISVISIBLE(c))
 		c->mon->sel = c;
-	drawbar(c->mon); // rearrange stuff in manage?
 	showhidemon(c->mon);
 	arrangemon(c->mon);
 	restack(c->mon);
 	XMapWindow(dpy, c->win);
 	focus(NULL);
+	drawbar(c->mon); // rearrange stuff in manage?
 }
 
 void
@@ -1083,9 +1083,9 @@ monocle(Monitor *m)
 		snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
 	else
 		strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
-	drawbar(m);
 	for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
 		resize(c, m->wx, m->wy, m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
+	drawbar(m);
 }
 
 void
@@ -1192,11 +1192,11 @@ propertynotify(XEvent *e)
 		case XA_WM_TRANSIENT_FOR:
 			if (!c->isfloating && (XGetTransientForHint(dpy, c->win, &trans)) &&
 				(c->isfloating = (wintoclient(trans)) != NULL)) {
-				if (c == c->mon->sel)
-					drawbar(c->mon);
 				showhidemon(c->mon);
 				arrangemon(c->mon);
 				restack(c->mon);
+				if (c == c->mon->sel)
+					drawbar(c->mon);
 			}
 			break;
 		case XA_WM_NORMAL_HINTS:
@@ -1417,11 +1417,11 @@ sendmon(Client *c, Monitor *m)
 	Monitor *oldmon = c->mon;
 	attachto(c, m);
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
-	drawbar(oldmon);
-	drawbar(m);
 	showhidemon(NULL);
 	arrangemon(NULL);
 	focus(NULL);
+	drawbar(oldmon);
+	drawbar(m);
 }
 
 void
@@ -1443,11 +1443,7 @@ setfullscreen(Client *c, int fullscreen)
 		c->oldstate = c->isfloating;
 		c->oldbw = c->bw;
 		c->bw = 0;
-		if (!c->isfloating) {
-			c->isfloating = 1;
-			if (c == c->mon->sel)
-				drawbar(c->mon);
-		}
+		c->isfloating = 1;
 		c->oldx = c->x;
 		c->oldy = c->y;
 		c->oldw = c->w;
@@ -1458,18 +1454,17 @@ setfullscreen(Client *c, int fullscreen)
 		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
 			PropModeReplace, (unsigned char*)0, 0);
 		c->isfullscreen = 0;
-		if (c->isfloating != c->oldstate) {
-			c->isfloating = c->oldstate;
-			if (c == c->mon->sel)
-				drawbar(c->mon);
-		}
+		c->isfloating = c->oldstate;
 		c->bw = c->oldbw;
 		// XXX: use resize() here to reapply size hints
 		resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
 		showhidemon(c->mon);
 		arrangemon(c->mon);
 		restack(c->mon);
-	}
+	} else
+		return;
+	if (c == c->mon->sel)
+		drawbar(c->mon);
 }
 
 void
@@ -1480,12 +1475,12 @@ setlayout(const Arg *arg)
 	if (arg && arg->v)
 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
-	drawbar(selmon);
 	if (selmon->sel) {
 		showhidemon(selmon);
 		arrangemon(selmon);
 		restack(selmon);
 	}
+	drawbar(selmon);
 }
 
 /* arg > 1.0 will set mfact absolutely */
@@ -1551,7 +1546,6 @@ setup(void)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
 	/* init bars */
 	updatebars();
-	drawbars();
 	updatestatus();
 	/* supporting window for NetWMCheck */
 	wmcheckwin = XCreateSimpleWindow(dpy, root, 0, 0, 1, 1, 0, 0, 0);
@@ -1574,6 +1568,7 @@ setup(void)
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
 	focus(NULL);
+	drawbars();
 }
 
 
@@ -1672,11 +1667,11 @@ tag(const Arg *arg)
 {
 	if (selmon->sel && arg->ui & TAGMASK) {
 		selmon->sel->tags = arg->ui & TAGMASK;
-		drawbar(selmon);
 		focus(NULL);
 		showhidemon(selmon);
 		arrangemon(selmon);
 		restack(selmon);
+		drawbar(selmon);
 	}
 }
 
@@ -1747,13 +1742,13 @@ togglefloating(const Arg *arg)
 	if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
 		return;
 	selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
-	drawbar(selmon);
 	if (selmon->sel->isfloating)
 		resize(selmon->sel, selmon->sel->x, selmon->sel->y,
 			selmon->sel->w, selmon->sel->h, 0);
 	showhidemon(selmon);
 	arrangemon(selmon);
 	restack(selmon);
+	drawbar(selmon);
 }
 
 void
@@ -1766,11 +1761,11 @@ toggletag(const Arg *arg)
 	newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
 	if (newtags) {
 		selmon->sel->tags = newtags;
-		drawbar(selmon);
 		focus(NULL);
 		showhidemon(selmon);
 		arrangemon(selmon);
 		restack(selmon);
+		drawbar(selmon);
 	}
 }
 
@@ -1781,11 +1776,11 @@ toggleview(const Arg *arg)
 
 	if (newtagset) {
 		selmon->tagset[selmon->seltags] = newtagset;
-		drawbar(selmon);
 		focus(NULL);
 		showhidemon(selmon);
 		arrangemon(selmon);
 		restack(selmon);
+		drawbar(selmon);
 	}
 }
 
@@ -1823,7 +1818,6 @@ unmanage(Client *c, int destroyed)
 	XWindowChanges wc;
 
 	attachto(c, NULL);
-	drawbar(m);
 	if (!destroyed) {
 		wc.border_width = c->oldbw;
 		XGrabServer(dpy); /* avoid race conditions */
@@ -1841,6 +1835,7 @@ unmanage(Client *c, int destroyed)
 	showhidemon(m);
 	arrangemon(m);
 	restack(m);
+	drawbar(m);
 }
 
 void
@@ -2100,11 +2095,11 @@ view(const Arg *arg)
 	selmon->seltags ^= 1; /* toggle sel tagset */
 	if (arg->ui & TAGMASK)
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
-	drawbar(selmon);
 	focus(NULL);
 	showhidemon(selmon);
 	arrangemon(selmon);
 	restack(selmon);
+	drawbar(selmon);
 }
 
 Client *
