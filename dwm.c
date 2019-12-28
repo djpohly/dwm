@@ -429,12 +429,12 @@ buttonpress(XEvent *e)
 	unsigned int i, x, click;
 	Arg arg = {0};
 	Client *c;
-	Monitor *m;
 	XButtonPressedEvent *ev = &e->xbutton;
+	Monitor *m = wintomon(ev->window);
 
 	click = ClkRootWin;
 	/* focus monitor if necessary */
-	if ((m = wintomon(ev->window)) && m != selmon) {
+	if (m != selmon) {
 		setfocus(NULL);
 		selectmon(m);
 		focus(NULL);
@@ -754,11 +754,10 @@ enternotify(XEvent *e)
 void
 expose(XEvent *e)
 {
-	Monitor *m;
 	XExposeEvent *ev = &e->xexpose;
 
-	if (ev->count == 0 && (m = wintomon(ev->window)))
-		drawbar(m);
+	if (ev->count == 0)
+		drawbar(wintomon(ev->window));
 }
 
 void
