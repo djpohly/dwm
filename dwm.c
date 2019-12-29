@@ -2162,7 +2162,6 @@ zoom(const Arg *arg)
 		if (!c || !(c = nexttiled(c->next)))
 			return;
 	toclienttop(c);
-	tostacktop(c);
 	focus(c);
 	showhide(c->mon->stack);
 	arrange(c->mon);
