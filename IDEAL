@@ -1,0 +1,161 @@
+Notes:
+- mon->clients is the tiling order
+- mon->stack is the last-focused order
+- restack() applies focus order as stacking order
+- if focus follows mouse without raising windows, then selmon->sel is not
+  necessarily the topmost window, but it is still the top of selmon->stack
+- Idea: floating layer and tiled layer, and whichever is raised is entirely in front
+- Window stacking order is preserved when unmapped
+- Original restack: raise selected+floating, leave bar, stack tiled below bar,
+  leave unselected+floating alone
+
+Invariants (from setup return until cleanup call):
+✓ mons != NULL
+✓ selmon != NULL
+✓ c->mon != NULL
+✓ c in m->clients <=> c in m->stack
+. window border = w == selmon->sel ? SchemeSel : SchemeNorm
+. If selmon->sel != NULL then:
+  ✓ !isurgent
+  . ISVISIBLE
+  . first in selmon->stack that ISVISIBLE
+  . has X focus?
+
+Function preconditions:
+? restack(m): m != NULL
+? restack(m): m->sel != NULL (i.e. has something ISVISIBLE)
+? arrange(m): m != NULL
+? arrange(m): m->sel != NULL (i.e. has something ISVISIBLE)
+
+Function postconditions:
+✓ createmon(...) != NULL
+✓ dirtomon(...) != NULL
+✓ recttomon(...) != NULL
+✓ wintomon(...) != NULL
+✓ mons->next != NULL => dirtomon(...) != selmon
+
+✓ Expose events only happen for m->barwin
+. selmon->sel has XInputFocus, _NET_ACTIVE_WINDOW, WM_TAKE_FOCUS
+. showhide is never called with m == NULL
+
+. for all c in m->clients, c->mon == m
+. for all c in m->stack, c->mon == m
+
+? attachto(c, m): c->mon != m
+
+For any monitor m,
+✓ m->clients is NULL if and only if m->stack is NULL
+✓ m->sel is in m->stack
+  m->sel == NULL or ISVISIBLE(m->sel)
+  m->sel is NULL only if nothing in m->stack ISVISIBLE
+
+Interplay of ->sel and X focus?
+c->win border is SchemeSel if and only if c == selmon->sel
+selmon->sel == first of selmon->stack which ISVISIBLE?
+
+drawbar(m) if any of these change:
+✓ OR(m->clients->tags)
+✓ selmon->sel->tags (m = selmon)
+✓ OR(m->clients->isurgent)
+✓ m->ltsymbol
+✓ m->tagset[m->seltags]
+✓ m->sel
+✓ selmon->sel (m = selmon)
+✓ m->sel->name
+✓ m->sel->isfixed
+✓ m->sel->isfloating
+✓ m->barwin
+✓ m->ww
+✓ Expose event on m->barwin
+✓ stext (m = selmon)
+
+drawbar after any of the following:
+✓ applyrules(c): drawbar(c->mon)
+✓ attachto(new c, m): drawbar(m)
+✓ attachto(c, NULL): drawbar(c->mon)
+✓ createmon(): drawbar(ret)
+✓ seturgent(c, x): drawbar(c->mon)
+✓ updatetitle(c): drawbar(c->mon)
+
+drawbars after any of the following (multiple m change):
+✓ attachto(c, m)
+
+drawbars() if any of these change:
+✓ selmon
+✓ lrpad
+
+drawbars after any of the following:
+✓ updatebars
+✓ updategeom() only if ret==1
+
+side effects:
+- arrange: all c->[xywh] on m, moves windows
+- arrangeall: all c->[xywh], moves windows
+- showhide: applies size hints to all visible+floating c->[xywh] on m
+- showhideall: applies size hints to all visible+floating c->[xywh]
+- restack: NONE
+- focus: selmon=c->mon, selmon->sel=c, selmon->stack order,
+         unset c->isurgent, numlockmask, sets window border, input focus
+  - focus(NULL) will never change selmon
+- unfocus: sets input focus, NetActiveWindow
+- switchmon: selmon if needed
+- seturgent: c->isurgent
+- tostacktop: c->mon->stack order
+- toclienttop: c->mon->clients order
+- updatenumlockmask: numlockmask
+- grabbuttons: numlockmask
+- drawbar: NONE
+- sendevent: NONE
+- setfocus: NONE
+- applysizehints: changes [xywh] args by reference
+- configure: NONE
+- resizeclient: c->[xywh], moves window
+- resize: c->[xywh] with hints, moves window
+- tile: c->[xywh], moves windows
+- monocle: c->[xywh], moves windows
+- setfullscreen: c->isfullscreen, c->isfloating, c->bw
+                 1: c->oldstate, c->oldbw, c->old[xywh], c->[xywh];
+                 0: all c->[xywh] on c->mon
+
+sendmon was used in:
+- movemouse
+- resizemouse
+- tagmon
+
+focus(c) does:
+- setxfocus(c): XInputFocus, _NET_ACTIVE_WINDOW, WM_TAKE_FOCUS
+- setfocus(c): switch button grabs and border from selmon->sel to c
+- selectmon(c->mon): selmon = c->mon
+- seturgent(c, 0): invariant
+- tostacktop(c)
+- selmon->sel = c
+
+focus(NULL) if no visible client on selmon:
+- setxfocus(NULL): XInputFocus etc. to root
+- selmon->sel = NULL
+
+focus(NULL) if any visible clients on selmon:
+- set c = first visible client on selmon
+- focus(c)
+
+
+arrange(m) should be called when any of these change:
+- m->lt[m->sellt]
+- m->clients
+- m->clients[*]->next
+- m->clients[*]->bw?
+- m->clients[*]->tags
+- m->clients[*]->isfloating
+- m->tagset[m->seltags]
+- m->nmaster
+- m->w[xywh] (updatebarpos, updategeom)
+- m->mfact
+
+showhide(m) should be called when any of these change:
+- m->clients[*]->tags
+- m->clients[*]->isfloating
+- m->tagset[m->seltags]
+
+restack(m) should only be called when sel should be raised
+
+Are barwins moved or resized when we updategeom?

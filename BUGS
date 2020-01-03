@@ -1,0 +1,1 @@
+After a ConfigureNotify on the root window, fullscreen clients are resized using resizeclient().  This overwrites their old[xywh] fields.
