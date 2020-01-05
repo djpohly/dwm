@@ -1,0 +1,6 @@
+-I/usr/include/freetype2
+-DVERSION="6.2"
+%c -std=c99
+%c -pedantic
+%c -Wall
+%c -Wno-deprecated-declarations
