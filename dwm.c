@@ -1743,18 +1743,8 @@ tagmon(const Arg *arg) /* COMMAND */
 	Monitor *m = dirtomon(arg->i);
 	// assert: m != NULL
 	// assert: m != selmon because mons->next != NULL
-	Client *t, *c = selmon->sel;
-
-	// start with snext?
-	detach(selmon->sel);
-	for (t = selmon->stack; t && !ISVISIBLE(t); t = t->snext);
-	selmon->sel = t;
-
-	c->mon = m;
-	c->next = m->clients;
-	m->clients = c;
-	c->snext = m->stack;
-	m->stack = c;
+	Client *c = selmon->sel;
+	attachto(c, m);
 
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	arrange(m);
