@@ -180,8 +180,6 @@ static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
 static void monocle(Monitor *m);
 static void motionnotify(XEvent *e);
-static void moveafter(Client *c, Client *prev);
-static void movebefore(Client *c, Client *next);
 static void movemouse(const Arg *arg);
 static Client *nexttiled(Client *c);
 static void propertynotify(XEvent *e);
@@ -209,6 +207,7 @@ static void selectmon(Monitor *m);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
+static void toclienttop(Client *c);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
@@ -1785,26 +1784,15 @@ tile(Monitor *m)
 		}
 }
 
-void /* precondetion: c && c != prev && (prev == NULL || c->mon == prev->mon) */
-moveafter(Client *c, Client *prev)
+void
+toclienttop(Client *c)
 {
 	Client **tc;
-	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
-	*tc = c->next;
-	tc = prev ? &prev->next : &c->mon->clients;
-	c->next = *tc;
-	*tc = c;
-}
 
-void /* precondition: c && c != next && (next == NULL || c->mon == next->mon) */
-movebefore(Client *c, Client *next)
-{
-	Client **tc;
 	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
-	for (tc = &c->mon->clients; *tc && *tc != next; tc = &(*tc)->next);
-	c->next = next;
-	*tc = c;
+	c->next = c->mon->clients;
+	c->mon->clients = c;
 }
 
 void
@@ -2275,7 +2263,7 @@ zoom(const Arg *arg) /* COMMAND ✓ */
 	if (c == nexttiled(selmon->clients))
 		if (!(c = nexttiled(c->next)))
 			return;
-	moveafter(c, NULL);
+	toclienttop(c);
 	focus(c);
 	arrange(c->mon);
 	restack(c->mon);
