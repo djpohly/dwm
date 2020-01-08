@@ -70,7 +70,7 @@ zoom:
 		new = nexttiled(c->next)
 	else
 		new = c
-	moveafter(new, NULL); // tostacktop(new)
+	toclienttop(new)
 	arrange(c->mon)
 	// original dwm always focuses master after swap
 	// focusclient(new)
@@ -105,6 +105,16 @@ setmfact:
 	m->mfact = new value
 	arrange(m)
 
+togglefloating:
+	Client *c = selmon->sel
+	if !c || c->isfullscreen || c->isfixed: // include isfixed here?
+		return
+	if (c->isfloating = !c->isfloating): // include isfixed here?
+		resize(sel, x, y, w, h, 0)
+	arrange(selmon)
+	? raiseclient(sel) // restack(selmon)
+	drawbar(selmon) // changed c->isfloating
+
 ## Miscellaneous
 
 killclient:
@@ -123,8 +133,6 @@ togglebar:
 
 movemouse:
 resizemouse:
-togglefloating:
-
 
 # FUNCTIONS
 
@@ -148,10 +156,11 @@ focusclient(c):
 	grabkeys(old, 0)
 	setborder(old, Normal)
 
+	setxfocus(c);
 	if !c:
-		setxfocus(root)
+		c->mon->sel = c
+		drawbar(c->mon);
 		return
-	setxfocus(c)
 
 	if c->isurgent:
 		seturgent(c, 0)
