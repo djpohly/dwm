@@ -156,6 +156,7 @@ static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
+static void detach(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
@@ -386,17 +387,12 @@ arrange(Monitor *m)
 void
 attachto(Client *c, Monitor *m)
 {
-	Client **tc, *t;
+	Client *t;
 
 	if (c->mon == m)
 		return;
 	if (c->mon) {
-		for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
-		*tc = c->next;
-
-		for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
-		*tc = c->snext;
-
+		detach(c);
 		if (c == c->mon->sel) {
 			// start with snext?
 			for (t = c->mon->stack; t && !ISVISIBLE(t); t = t->snext);
@@ -646,6 +642,16 @@ destroynotify(XEvent *e) /* EVENT */
 
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
+}
+
+void
+detach(Client *c) /* precondition: c->mon != NULL.  note: does not update sel. */
+{
+	Client **tc;
+	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
 }
 
 Monitor *
@@ -1736,16 +1742,10 @@ tagmon(const Arg *arg) /* COMMAND */
 	Monitor *m = dirtomon(arg->i);
 	// assert: m != NULL
 	// assert: m != selmon because mons->next != NULL
-	Client *c = selmon->sel;
-	Client **tc, *t;
-
-	for (tc = &selmon->clients; *tc && *tc != c; tc = &(*tc)->next);
-	*tc = c->next;
-
-	for (tc = &selmon->stack; *tc && *tc != c; tc = &(*tc)->snext);
-	*tc = c->snext;
+	Client *t, *c = selmon->sel;
 
 	// start with snext?
+	detach(selmon->sel);
 	for (t = selmon->stack; t && !ISVISIBLE(t); t = t->snext);
 	selmon->sel = t;
 
@@ -1805,7 +1805,6 @@ toclienttop(Client *c)
 
 	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
-
 	c->next = c->mon->clients;
 	c->mon->clients = c;
 }
@@ -1891,7 +1890,6 @@ tostacktop(Client *c)
 
 	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
-
 	c->snext = c->mon->stack;
 	c->mon->stack = c;
 }
