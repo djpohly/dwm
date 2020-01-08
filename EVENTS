@@ -1,0 +1,130 @@
+## EVENTS
+
+buttonpress:
+clientmessage:
+configurenotify:
+configurerequest:
+destroynotify:
+enternotify:
+expose:
+focusin:
+keypress:
+mappingnotify:
+maprequest:
+motionnotify:
+propertynotify:
+unmapnotify:
+
+## COMMANDS
+
+focusmon:
+	new = m->sel
+	focusclient(m->sel)
+		
+focusstack:
+	new = next client to focus
+	focusclient(new)
+	raiseclient(new) or restack(new->mon)
+
+incnmaster:
+	m->nmaster = new value
+	arrange(m)
+
+killclient:
+	send Delete event to window
+
+quit:
+	running = 0
+
+setlayout:
+	m->lt = lt
+	arrange(m)
+
+setmfact:
+	m->mfact = new value
+	arrange(m)
+
+tag: // change tags of selected client
+	old = c->tags
+	if new == old || new == 0:
+		return
+	c->tags = new
+	if !ISVISIBLE(c): // no longer visible
+		// not visible anymore
+		focusclient(stacktop(c->mon))
+		arrange(c->mon)
+		showhide(c->mon)
+	drawbar(c->mon) // changed: c->tags, maybe m->sel
+
+view: // change visible tags on m
+	old = m->tags
+	if new == old || new == 0:
+		return
+	m->tags = new
+	arrange(m)
+	showhide(m)
+	drawbar(m)
+
+movemouse:
+push:
+resizemouse:
+spawn:
+tagmon: // change monitor of selected client
+togglebar:
+togglefloating:
+toggletag:
+toggleview:
+zoom:
+	top = firstvisible(c->mon->clients)
+	if c == top:
+		focusclient(stackafter(stacktop(c->mon)))
+
+## FUNCTIONS
+
+arrange(m):
+	if !m->sel || !m->lt->arrange:
+		return
+	m->lt->arrange(m)
+
+focusclient(c):
+	old = selmon->sel
+	if c == old:
+		return
+
+	grabkeys(old, 0)
+	setborder(old, Normal)
+
+	if !c:
+		setxfocus(root)
+		return
+	setxfocus(c)
+
+	if c->isurgent:
+		seturgent(c, 0)
+	grabkeys(c, 1)
+	setborder(c, Selected)
+
+	c->mon->sel = c
+	if (selmon != c->mon)
+		oldmon = selmon
+		selmon = c->mon
+		drawbar(oldmon) // changed: selmon
+
+	tostacktop(c)
+	? arrange(c->mon)
+	drawbar(c->mon) // changed: c->isurgent, c->mon->sel, selmon
+
+raiseclient(c):
+	if c->isfloating:
+		XRaiseWindow(c->win)
+	else:
+		XConfigureWindow(c->win, Below, c->mon->barwin)
+
+stackafter(c):
+	if c:
+		for (c = c->snext; c && !ISVISIBLE(c); c = c->snext);
+	return c
+
+stacktop(m):
+	for (c = m->stack; c && !ISVISIBLE(c); c = c->snext);
+	return c

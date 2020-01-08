@@ -1844,10 +1844,26 @@ toggletag(const Arg *arg) /* COMMAND */
 	newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
 	if (newtags) {
 		selmon->sel->tags = newtags;
-		focus(NULL);
-		showhide(selmon->stack);
-		arrange(selmon);
-		restack(selmon);
+		if (!ISVISIBLE(selmon->sel)) {
+			grabbuttons(selmon->sel, 0);
+			XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeNorm][ColBorder].pixel);
+
+			Client *c;
+			for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext); // optimization: c = selmon->sel->next to start
+			setxfocus(c);
+			if (c) {
+				if (c->isurgent)
+					seturgent(c, 0);
+				tostacktop(c);
+				grabbuttons(c, 1);
+				XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
+			}
+			selmon->sel = c;
+
+			showhide(selmon->stack);
+			arrange(selmon);
+			restack(selmon);
+		}
 		drawbar(selmon);
 	}
 }
