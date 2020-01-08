@@ -200,6 +200,7 @@ static void setclienttags(Client *c, unsigned int tags);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
+static void setmontags(Monitor *m, unsigned int tags);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void setxfocus(Client *c);
@@ -1587,6 +1588,17 @@ setmfact(const Arg *arg) /* COMMAND */
 		return;
 	selmon->mfact = f;
 	arrange(selmon);
+}
+
+void /* precondition: m != NULL */
+setmontags(Monitor *m, unsigned int tags)
+{
+	if (tags == 0 || tags == m->tagset[m->seltags])
+		return;
+	m->tagset[m->seltags] = tags;
+	arrange(m);
+	showhide(m->stack);
+	drawbar(m);
 }
 
 void
