@@ -64,7 +64,7 @@ focusstack:
 	raiseclient(new) or restack(new->mon)
 
 zoom:
-	if (!ISTILED(c))
+	if (c->isfloating || !ISVISIBLE(c))
 		return
 	if (c == nexttiled(c->mon->clients))
 		new = nexttiled(c->next)
@@ -82,7 +82,7 @@ incnmaster:
 	arrange(m)
 
 pushdown:
-	if !sel || !ISTILED(sel):
+	if !sel || sel->isfloating || !ISVISIBLE(sel):
 		return
 	if (c = nexttiled(sel->next)):
 		moveafter(sel, c)
@@ -90,7 +90,7 @@ pushdown:
 		moveafter(sel, NULL);
 
 pushup:
-	if !sel || !ISTILED(sel):
+	if !sel || sel->isfloating || !ISVISIBLE(sel):
 		return
 	if (c = prevtiled(sel)):
 		movebefore(sel, c)
