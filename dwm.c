@@ -388,18 +388,10 @@ arrange(Monitor *m)
 void
 attachto(Client *c, Monitor *m)
 {
-	Client *t;
-
 	if (c->mon == m)
 		return;
-	if (c->mon) {
+	if (c->mon)
 		detach(c);
-		if (c == c->mon->sel) {
-			// start with snext?
-			for (t = c->mon->stack; t && !ISVISIBLE(t); t = t->snext);
-			c->mon->sel = t;
-		}
-	}
 	if ((c->mon = m)) {
 		c->next = c->mon->clients;
 		c->mon->clients = c;
@@ -648,11 +640,16 @@ destroynotify(XEvent *e) /* EVENT */
 void
 detach(Client *c) /* precondition: c->mon != NULL.  note: does not update sel. */
 {
-	Client **tc;
+	Client *t, **tc;
 	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
 	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
+
+	if (c == c->mon->sel) {
+		for (t = c->mon->sel->next; t && !ISVISIBLE(t); t = t->snext);
+		c->mon->sel = t;
+	}
 }
 
 Monitor *
