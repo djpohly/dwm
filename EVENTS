@@ -7,12 +7,25 @@ clientmessage:
 configurenotify:
 configurerequest:
 destroynotify:
+	if !(c = wintoclient(w))
+		return // not a managed window
+	if (c == c->mon->sel)
+		focusclient(nextvisible(c->snext))
+	detach(c)
+	arrange(c->mon)
+	destroyclient(c)
+
 enternotify:
 expose:
 focusin:
 keypress:
 mappingnotify:
 maprequest:
+	if (c = wintoclient(w))
+		return // already managed
+	c = newclient(w)
+	attachto(c, selmon)
+
 motionnotify:
 propertynotify:
 unmapnotify:
@@ -198,9 +211,15 @@ nexttiled(c):
 	for (/* c */; c && (c->isfloating || !ISVISIBLE(c)); c = c->next)
 	return c
 
+nexttiled(c):
+	return c && (c->isfloating || !ISVISIBLE(c)) : nexttiled(c->next) : c;
+
 nextvisible(c):
 	for (/* c */; c && !ISVISIBLE(c); c = c->snext);
 	return c
+
+nextvisible(c):
+	return c && !ISVISIBLE(c) ? nextvisible(c->next) : c;
 
 prevtiled(c):
 	Client *i, *p = NULL;
