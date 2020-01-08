@@ -163,6 +163,7 @@ static void drawbars(void);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
+static void focusclient(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
@@ -182,6 +183,7 @@ static void monocle(Monitor *m);
 static void motionnotify(XEvent *e);
 static void movemouse(const Arg *arg);
 static Client *nexttiled(Client *c);
+static Client *nextvisible(Client *c);
 static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
 static Monitor *recttomon(int x, int y, int w, int h);
@@ -194,6 +196,7 @@ static void scan(void);
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
+static void setclienttags(Client *c, unsigned int tags);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
@@ -774,6 +777,28 @@ focus(Client *c)
 	drawbar(selmon);
 }
 
+void
+focusclient(Client *c)
+{
+	Monitor *oldmon = selmon;
+	if (c == selmon->sel)
+		return;
+
+	setxfocus(c);
+	setfocus(c);
+	if (c) {
+		if (c->isurgent)
+			seturgent(c, 0);
+		tostacktop(c);
+		if (selmon != c->mon) {
+			selmon = c->mon;
+			drawbar(oldmon);
+		}
+	}
+	selmon->sel = c;
+	drawbar(selmon);
+}
+
 /* there are some broken focus acquiring clients needing extra handling */
 void
 focusin(XEvent *e) /* EVENT */
@@ -1219,6 +1244,13 @@ nexttiled(Client *c)
 	return c;
 }
 
+Client *
+nextvisible(Client *c)
+{
+	for (; c && !ISVISIBLE(c); c = c->snext);
+	return c;
+}
+
 void
 propertynotify(XEvent *e) /* EVENT */
 {
@@ -1480,6 +1512,20 @@ setclientstate(Client *c, long state)
 		PropModeReplace, (unsigned char *)data, 2);
 }
 
+void /* precondition: ISVISIBLE(c) */
+setclienttags(Client *c, unsigned int tags)
+{
+	if (!c || tags == 0 || tags == c->tags)
+		return;
+	c->tags = tags;
+	if (!ISVISIBLE(c)) {
+		focusclient(nextvisible(c->mon->stack));
+		arrange(c->mon);
+		showhide(c->mon->stack);
+	}
+	drawbar(c->mon);
+}
+
 void
 setfullscreen(Client *c, int fullscreen)
 {
@@ -1700,30 +1746,7 @@ selectmon(Monitor *m)
 void
 tag(const Arg *arg) /* COMMAND */
 {
-	// XXX set selected client's tags to arg->ui
-	if (!selmon->sel || !(arg->ui & TAGMASK))
-		return;
-	// INVAR: ISVISIBLE(selmon->sel)
-	selmon->sel->tags = arg->ui & TAGMASK;
-	if (!ISVISIBLE(selmon->sel)) {
-		// while ((selmon->sel = selmon->sel->snext) && !ISVISIBLE(selmon->sel));
-		Client *c;
-		for (c = selmon->sel->snext; c && !ISVISIBLE(c); c = c->snext);
-		setxfocus(c);
-		if (c) {
-			if (c->isurgent)
-				seturgent(c, 0);
-			// not strictly necessary
-			//tostacktop(c);
-			setfocus(c);
-		}
-		selmon->sel = c;
-
-		showhide(selmon->stack);
-		if (selmon->sel)
-			arrange(selmon);
-	}
-	drawbar(selmon);
+	setclienttags(selmon->sel, arg->ui & TAGMASK);
 }
 
 void
@@ -1821,36 +1844,9 @@ togglefloating(const Arg *arg) /* COMMAND */
 void
 toggletag(const Arg *arg) /* COMMAND */
 {
-	// XXX add/remove arg->ui from client's tag list
-	unsigned int newtags;
-
 	if (!selmon->sel)
 		return;
-	newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
-	if (newtags) {
-		selmon->sel->tags = newtags;
-		if (!ISVISIBLE(selmon->sel)) {
-			grabbuttons(selmon->sel, 0);
-			XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeNorm][ColBorder].pixel);
-
-			Client *c;
-			for (c = selmon->stack; c && !ISVISIBLE(c); c = c->snext); // optimization: c = selmon->sel->next to start
-			setxfocus(c);
-			if (c) {
-				if (c->isurgent)
-					seturgent(c, 0);
-				tostacktop(c);
-				grabbuttons(c, 1);
-				XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
-			}
-			selmon->sel = c;
-
-			showhide(selmon->stack);
-			arrange(selmon);
-			restack(selmon);
-		}
-		drawbar(selmon);
-	}
+	setclienttags(selmon->sel, selmon->sel->tags ^ (arg->ui & TAGMASK));
 }
 
 void
