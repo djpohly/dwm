@@ -1751,11 +1751,10 @@ tagmon(const Arg *arg) /* COMMAND */
 	selmon->sel = t;
 
 	c->mon = m;
-	c->next = selmon->clients;
-	selmon->clients = c;
-
-	c->snext = selmon->stack;
-	selmon->stack = c;
+	c->next = m->clients;
+	m->clients = c;
+	c->snext = m->stack;
+	m->stack = c;
 
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	arrange(m);
