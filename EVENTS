@@ -246,15 +246,38 @@ setselandmon(m, c): // PRECONDITION: !c || c->mon == m
 		selmon = m
 	drawbar(selmon)
 
-setsel(m, c): // requires drawbar(m) if c != m->sel
+// Decide whether you ask to change sel, and that affects m->stack, or
+// you ask to change m->stack, and that affects sel
+
+focusclient(c):
+	EXPECT(c->mon == selmon)
+	tostacktop_nosetsel(c)
+	fixsel(m)
+
+fixsel(m):
+	new = nextvisible(m->stack)
+	if m->sel != new:
+		if m == selmon:
+			unfocussel()
+		m->sel = new
+		if m == selmon:
+			focussel()
+
+// Does this work when:
+// ✓ c == m->sel (no change)
+// - c != m->sel && m != selmon (no focus change, fixing sel)
+// - c != m->sel && m == selmon && c == NULL
+// - c != m->sel && m == selmon && c != m->sel && m->sel == NULL
+// - c != m->sel && m == selmon && c != m->sel && m->sel != NULL
+setsel(m, c): // requires drawbar(m) if m->sel != c
 	EXPECT(!c || c->mon == m);
 	if m->sel != c:
 		if m == selmon:
-			if m->sel:
-				unfocus(m->sel);
-			if c:
-				focus(c);
+			unfocussel();
 		m->sel = c;
+		if m == selmon:
+			focussel()
+		// arrange(m) if m->sel affects arrange
 
 setselmon(m):
 	if selmon != m:
@@ -266,7 +289,7 @@ setselmon(m):
 focusmc(m, c):
 	assert(m && (!c || c->mon == m))
 	if m != selmon || c != selmon->sel: // needed??
-		unfocussel() // no-op if m != selmon
+		unfocussel_old(m) // no-op if m != selmon
 		selectmon(m) // no-op if m == selmon
 		selectclient(c)
 		focussel() // no-op if m != selmon
@@ -305,21 +328,24 @@ unselect(m):
 	m->sel = NULL
 	// arrange(m) if layouts can move or restack based on sel
 
-focussel(m): // PRECONDITION: nothing is focused
-	if m != selmon:
-		return
-	setxfocus(m->sel)
-	if m->sel:
-		if m->sel->isurgent:
-			seturgent(m->sel, 0)
-		grabbuttons(m->sel, 1)
-		setborder(m->sel, Selected)
+focussel(): // PRECONDITION: nothing is focused
+	setxfocus(selmon->sel)
+	if selmon->sel:
+		if selmon->sel->isurgent:
+			seturgent(selmon->sel, 0)
+		grabbuttons(selmon->sel, 1)
+		setborder(selmon->sel, Selected)
 
-unfocussel(m):
+unfocussel_old(m):
 	if m != selmon || !m->sel:
 		return
 	grabbuttons(m->sel, 0)
 	setborder(m->sel, Normal)
+
+unfocussel(m):
+	if selmon->sel:
+		grabbuttons(selmon->sel, 0)
+		setborder(selmon->sel, Normal)
 
 ## Layout
 
