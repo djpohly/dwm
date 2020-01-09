@@ -1,4 +1,44 @@
+# NOTES
+
+- showhide makes no sense without arrange, because arrange depends on which
+  windows are visible, and any change in this also requires showhide
+
 # EVENTS
+
+## Structure/Substructure
+
+destroynotify:
+	if !(c = wintoclient(w))
+		return // not a managed window
+	unmanage(c)
+
+unmapnotify:
+	if !(c = wintoclient(w)):
+		return
+	if (c->expect_unmap--):
+		return
+	setclientstate(c, WithdrawnState)
+	unmanage(c)
+
+## Input
+
+keypress:
+	as-is
+## Exposure
+
+expose:
+	assert(w is a barwin)
+	as-is
+
+## FocusChange
+
+focusin:
+	as-is
+
+## Miscellany
+
+mappingnotify:
+	as-is
 
 ## TODO
 
@@ -6,29 +46,18 @@ buttonpress:
 clientmessage:
 configurenotify:
 configurerequest:
-destroynotify:
-	if !(c = wintoclient(w))
-		return // not a managed window
-	if (c == c->mon->sel)
-		focusclient(nextvisible(c->snext))
-	detach(c)
-	arrange(c->mon)
-	destroyclient(c)
-
 enternotify:
-expose:
-focusin:
-keypress:
-mappingnotify:
 maprequest:
-	if (c = wintoclient(w))
-		return // already managed
+	if wintoclient(w):
+		return // client tried to map again while hidden?
 	c = newclient(w)
 	attachto(c, selmon)
 
 motionnotify:
+	if ev->window != root:
+		return
+	focusmon(recttomon
 propertynotify:
-unmapnotify:
 
 # COMMANDS
 
@@ -52,13 +81,13 @@ tagmon: // change monitor of selected client (without following it)
 		return
 
 	new = nextvisible(c->snext)
-	focusclient(new)
+	focusmc(selmon, new)
 	? raiseclient(new) or restack(new->mon)
 	// assert: selmon->sel != c
 
 	newmon = monitor to send to
-	attachto(c, newmon)
 	c->tags = m->tags
+	attachto(c, newmon)
 
 	arrange(selmon)
 	arrange(newmon)
@@ -68,12 +97,12 @@ tagmon: // change monitor of selected client (without following it)
 ## Focus/order
 
 focusmon:
-	new = m->sel
-	focusclient(m->sel)
+	// needs to set selmon even if no client on it
+	focusmc(m, m->sel)
 		
 focusstack:
 	new = next client to focus
-	focusclient(new)
+	focusmc(new->mon, new)
 	raiseclient(new) or restack(new->mon)
 
 zoom:
@@ -86,7 +115,7 @@ zoom:
 	toclienttop(new)
 	arrange(c->mon)
 	// original dwm always focuses master after swap
-	// focusclient(new)
+	// focusmc(selmon, new)
 
 ## Layout
 
@@ -149,46 +178,136 @@ resizemouse:
 
 # FUNCTIONS
 
+## Focus
+
+Thoughts:
+- The monitor stack should represent the last-focused order of clients.
+- A client is raised in this stack only if it is focused/selected.
+  - A client may be *placed* at the top when created or sent to this monitor.
+- If any client is focused, selmon is its monitor.
+- Therefore we should only *raise* clients (tostacktop) in the stack on selmon.
+  - A client may be *placed* into the stack of an unfocused monitor.
+- Should raising a client tostacktop change selmon?  Or is c->mon == selmon a
+  precondition for tostacktop?
+- If any client is focused, it is visible.
+- Therefore we will only *raise* clients (tostacktop) which are visible.
+- Therefore the client passed to tostacktop will always become the first
+  visible client in c->mon->stack == selmon->stack, so it should become
+  selmon->sel.
+
+focusmc(m, c):
+	assert(m && (!c || c->mon == m))
+	if m != selmon || c != selmon->sel: // needed??
+		unfocussel()
+		selectmon(m)
+		selectclient(c)
+		focussel()
+		drawbar(m) // changed: c->isurgent, c->mon->sel, selmon
+
+selectmon(m): // PRECONDITION: nothing is focused, NOTE: requires drawbar(selmon)
+	if selmon != m:
+		oldmon = selmon
+		selmon = m
+		drawbar(oldmon)
+
+selectclient(c): // NOTE: c may be NULL, requires drawbar(selmon)
+	// PRECONDITION: !c || c->mon == selmon
+    tostacktop(c)
+	if c:
+		// arrange(c->mon) if layouts can move or restack based on sel
+
+selectclient2(c):
+    tostacktop(c)
+    // arrange(selmon) if layouts care about sel
+
+selectclient3(c, m): // also selects monitor
+	selectmon(c ? c->mon : m)
+    tostacktop(c)
+	// arrange(selmon) if layouts care about sel
+
+unselect(m):
+	m->sel = NULL
+	// arrange(m) if layouts can move or restack based on sel
+
+focussel: // PRECONDITION: nothing is focused
+	setxfocus(selmon->sel)
+	if selmon->sel:
+		if selmon->sel->isurgent:
+			seturgent(selmon->sel, 0)
+		grabbuttons(selmon->sel, 1)
+		setborder(selmon->sel, Selected)
+
+unfocussel:
+	if selmon->sel:
+		grabbuttons(selmon->sel, 0)
+		setborder(selmon->sel, Normal)
+
+## Layout
+
 arrange(m):
 	if !m->sel || !m->lt->arrange:
 		return
 	m->lt->arrange(m)
 
-detach(c):
+raiseclient(c):
+	if c->isfloating:
+		XRaiseWindow(c->win)
+	else:
+		XConfigureWindow(c->win, Below, c->mon->barwin)
+
+showhide(c):
+	// as in other, but
+	XMapWindow(c->win)
+	// or
+	c->expect_unmap++;
+	XUnmapWindow(c->win)
+
+## Tags
+
+setclienttags(new):
+	if !selmon->sel || new == selmon->sel->tags || new == 0:
+		return
+	// assert: since selmon->sel != NULL, ISVISIBLE(selmon->sel)
+	selmon->sel->tags = new
+	if !ISVISIBLE(selmon->sel):
+		focusmc(selmon, nextvisible(selmon->stack))
+		arrange(selmon)
+		showhide(selmon)
+	drawbar(selmon) // changed: c->tags, maybe m->sel
+
+setmontags:
+	if new == selmon->tags || new == 0:
+		return
+	// assert: selmon->sel == NULL || ISVISIBLE(selmon->sel)
+	selmon->tags = new
+	if !selmon->sel || !ISVISIBLE(selmon->sel): // can this be simplified?
+		focusmc(selmon, nextvisible(selmon->stack))
+	arrange(selmon)
+	showhide(selmon)
+	drawbar(selmon)
+
+## List management
+
+attachto(c, m):
+	if c->mon != m:
+        if c->mon:
+            detach(c);
+        c->mon = m;
+        if c->mon:
+            c->next = c->mon->clients;
+            c->mon->clients = c;
+
+            c->snext = c->mon->stack;
+            c->mon->stack = c;
+            if ISVISIBLE(c):
+                c->mon->sel = c;
+
+detach(c): // PRECONDITION: c != c->mon->sel
 	Client **tc;
 	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
 	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
-
-focusclient(c):
-	old = selmon->sel
-	if c == old:
-		return
-
-	grabkeys(old, 0)
-	setborder(old, Normal)
-
-	setxfocus(c);
-	if !c:
-		c->mon->sel = c
-		drawbar(c->mon);
-		return
-
-	if c->isurgent:
-		seturgent(c, 0)
-	grabkeys(c, 1)
-	setborder(c, Selected)
-
-	c->mon->sel = c
-	if (selmon != c->mon)
-		oldmon = selmon
-		selmon = c->mon
-		drawbar(oldmon) // changed: selmon
-
-	tostacktop(c)
-	// arrange(c->mon) if layouts can move or restack based on focus
-	drawbar(c->mon) // changed: c->isurgent, c->mon->sel, selmon
 
 moveafter(c, prev):
 	Client **tc;
@@ -228,35 +347,24 @@ prevtiled(c):
 			p = i;
 	return p;
 
-raiseclient(c):
-	if c->isfloating:
-		XRaiseWindow(c->win)
-	else:
-		XConfigureWindow(c->win, Below, c->mon->barwin)
-
-setclienttags(new):
-	if new == 0 || new == selmon->sel->tags:
-		return
-	selmon->sel->tags = new
-	if !ISVISIBLE(selmon->sel): // assuming it was visible before
-		// not visible anymore
-		focusclient(nextvisible(selmon->stack))
-		arrange(selmon)
-		showhide(selmon)
-	drawbar(selmon) // changed: c->tags, maybe m->sel
-
-setmontags:
-	if new == 0 || new == selmon->tags:
-		return
-	selmon->tags = new
-	arrange(selmon)
-	showhide(selmon)
-	drawbar(selmon)
-
-tostacktop:
+tostacktop: // PRECONDITION: c->mon == selmon
+    // NOTE: c may be NULL, which sets c->mon->sel to NULL
 	Client **tc;
 
-	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
-	*tc = c->snext;
-	c->snext = c->mon->stack;
-	c->mon->stack = c;
+    if (c->mon->sel = c):
+        for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+        *tc = c->snext;
+        c->snext = c->mon->stack;
+        c->mon->stack = c;
+
+
+## Client management
+
+// Preconditions:
+//  c is unmapped+Withdrawn (or we are shutting down)
+unmanage(c):
+	if (c == c->mon->sel)
+		focusmc(selmon, nextvisible(c->snext))
+	detach(c)
+	arrange(c->mon)
+	destroyclient(c)
