@@ -285,7 +285,7 @@ applyrules(Client *c)
 	const char *class, *instance;
 	unsigned int i;
 	const Rule *r;
-	Monitor *m;
+	Monitor *m, *mon = selmon;
 	XClassHint ch = { NULL, NULL };
 
 	/* rule matching */
@@ -305,7 +305,7 @@ applyrules(Client *c)
 			c->tags |= r->tags;
 			for (m = mons; m && m->num != r->monitor; m = m->next);
 			if (m)
-				attachto(c, m);
+				mon = m;
 		}
 	}
 	if (ch.res_class)
@@ -313,6 +313,7 @@ applyrules(Client *c)
 	if (ch.res_name)
 		XFree(ch.res_name);
 	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
+	attachto(c, mon);
 }
 
 int
@@ -398,9 +399,10 @@ attachto(Client *c, Monitor *m)
 	if ((c->mon = m)) {
 		c->next = c->mon->clients;
 		c->mon->clients = c;
-
 		c->snext = c->mon->stack;
 		c->mon->stack = c;
+		if (ISVISIBLE(c))
+			c->mon->sel = c;
 	}
 }
 
@@ -1073,12 +1075,10 @@ manage(Window w, XWindowAttributes *wa)
 
 	updatetitle(c);
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
-		attachto(c, t->mon);
 		c->tags = t->tags;
-	} else {
-		attachto(c, selmon);
+		attachto(c, t->mon);
+	} else
 		applyrules(c);
-	}
 
 	if (c->x + WIDTH(c) > c->mon->mx + c->mon->mw)
 		c->x = c->mon->mx + c->mon->mw - WIDTH(c);
@@ -1108,8 +1108,6 @@ manage(Window w, XWindowAttributes *wa)
 	setclientstate(c, NormalState);
 	if (c->mon == selmon)
 		setfocus(NULL);
-	if (ISVISIBLE(c))
-		c->mon->sel = c;
 	showhide(c->mon->stack);
 	arrange(c->mon);
 	restack(c->mon);
