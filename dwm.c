@@ -1490,8 +1490,8 @@ void
 sendmon(Client *c, Monitor *m)
 {
 	Monitor *oldmon = c->mon;
-	attachto(c, m);
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
+	attachto(c, m);
 	showhide(oldmon->stack);
 	showhide(m->stack);
 	arrange(oldmon);
@@ -1772,9 +1772,9 @@ tagmon(const Arg *arg) /* COMMAND */
 	// assert: m != NULL
 	// assert: m != selmon because mons->next != NULL
 	Client *c = selmon->sel;
+	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	attachto(c, m);
 
-	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	arrange(m);
 	arrange(selmon);
 
