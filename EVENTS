@@ -64,16 +64,16 @@ propertynotify:
 ## Tag management
 
 tag: // change tags of selected client
-	setclienttags(new)
+	setclienttags(selmon->sel, new)
 
 toggletag: // XOR selected client's tags with arg
-	setclienttags(selmon->sel->tags ^ new)
+	setclienttags(selmon->sel, selmon->sel->tags ^ new)
 
 view: // change visible tags on m
-	setmontags(new)
+	setmontags(selmon, new)
 
 toggleview:
-	setmontags(selmon->tags ^ new)
+	setmontags(selmon, selmon->tags ^ new)
 
 tagmon: // change monitor of selected client (without following it)
 	Client *c = selmon->sel;
@@ -194,15 +194,91 @@ Thoughts:
 - Therefore the client passed to tostacktop will always become the first
   visible client in c->mon->stack == selmon->stack, so it should become
   selmon->sel.
+- WAIT: changing tags on an unfocused monitor should change its ->sel also;
+  should selectclient be used for this?
+
+Car thoughts:
+- Invariants:
+  - m->sel is the most recently selected visible client in m's stack, or NULL if none is visible
+  - The X focus belongs to selmon->sel if not NULL, otherwise the root
+  - The selected border follows the X focus
+  - The focused client is always first in selmon->stack
+- Updates to the model:
+  - Changing m->sel from old to new (old != new)
+    - If m == selmon && old != NULL, unfocus old
+    - If m == selmon && new != NULL, focus new
+    - Should cause drawbar(m)
+  - Changing selmon from old to new (old != NULL, new != NULL)
+    - If old->sel != NULL, unfocus old->sel
+    - If new->sel != NULL, focus new->sel
+    - Should cause drawbar(old) and drawbar(new)
+  - Changing both selmon (from m1 to m2) and sel (from c1 to c2) at once
+    - Set m2->sel to c2
+  - Detaching c from m
+    - Should cause a focus transition if c == selmon->sel
+    - Should cause drawbar(m)
+  - Attaching c to m
+    - Should set m->sel
+- What can cause m->sel to change:
+  - No longer most recent due to another client on m being selected (enternotify, focusstack, visible attachto)
+  - No longer visible (client tags, monitor tags)
+  - No longer in m's stack (change monitor, unmanage)
+- To focus a different client on selmon:
+  - Set selmon->sel to client
+
+setselandmon(m, c): // PRECONDITION: !c || c->mon == m
+	//setsel(m, c)
+	EXPECT(!c || c->mon == m);
+	if c && c == selmon->sel:
+		return
+	if !c && selmon->sel == NULL && selmon == m:
+		return
+	if m->sel != c:
+		if m == selmon:
+			if m->sel:
+				unfocus(m->sel);
+			if c:
+				focus(c);
+		tostacktop(c)
+	if selmon != m:
+		oldmon = selmon
+		drawbar(oldmon)
+		selmon = m
+	drawbar(selmon)
+
+setsel(m, c): // requires drawbar(m) if c != m->sel
+	EXPECT(!c || c->mon == m);
+	if m->sel != c:
+		if m == selmon:
+			if m->sel:
+				unfocus(m->sel);
+			if c:
+				focus(c);
+		m->sel = c;
+
+setselmon(m):
+	if selmon != m:
+		oldmon = selmon
+		drawbar(oldmon)
+		selmon = m
+		drawbar(selmon)
 
 focusmc(m, c):
 	assert(m && (!c || c->mon == m))
 	if m != selmon || c != selmon->sel: // needed??
-		unfocussel()
-		selectmon(m)
+		unfocussel() // no-op if m != selmon
+		selectmon(m) // no-op if m == selmon
 		selectclient(c)
-		focussel()
+		focussel() // no-op if m != selmon
 		drawbar(m) // changed: c->isurgent, c->mon->sel, selmon
+
+focusclient(c):
+	EXPECT(c->mon == selmon);
+	if c != selmon->sel:
+		unfocussel()
+		tostacktop2(selmon, c);
+		focussel()
+		drawbar(m)
 
 selectmon(m): // PRECONDITION: nothing is focused, NOTE: requires drawbar(selmon)
 	if selmon != m:
@@ -212,35 +288,38 @@ selectmon(m): // PRECONDITION: nothing is focused, NOTE: requires drawbar(selmon
 
 selectclient(c): // NOTE: c may be NULL, requires drawbar(selmon)
 	// PRECONDITION: !c || c->mon == selmon
-    tostacktop(c)
+	tostacktop(c)
 	if c:
 		// arrange(c->mon) if layouts can move or restack based on sel
 
 selectclient2(c):
-    tostacktop(c)
-    // arrange(selmon) if layouts care about sel
+	tostacktop(c)
+	// arrange(selmon) if layouts care about sel
 
 selectclient3(c, m): // also selects monitor
 	selectmon(c ? c->mon : m)
-    tostacktop(c)
+	tostacktop(c)
 	// arrange(selmon) if layouts care about sel
 
 unselect(m):
 	m->sel = NULL
 	// arrange(m) if layouts can move or restack based on sel
 
-focussel: // PRECONDITION: nothing is focused
-	setxfocus(selmon->sel)
-	if selmon->sel:
-		if selmon->sel->isurgent:
-			seturgent(selmon->sel, 0)
-		grabbuttons(selmon->sel, 1)
-		setborder(selmon->sel, Selected)
+focussel(m): // PRECONDITION: nothing is focused
+	if m != selmon:
+		return
+	setxfocus(m->sel)
+	if m->sel:
+		if m->sel->isurgent:
+			seturgent(m->sel, 0)
+		grabbuttons(m->sel, 1)
+		setborder(m->sel, Selected)
 
-unfocussel:
-	if selmon->sel:
-		grabbuttons(selmon->sel, 0)
-		setborder(selmon->sel, Normal)
+unfocussel(m):
+	if m != selmon || !m->sel:
+		return
+	grabbuttons(m->sel, 0)
+	setborder(m->sel, Normal)
 
 ## Layout
 
@@ -264,43 +343,46 @@ showhide(c):
 
 ## Tags
 
-setclienttags(new):
-	if !selmon->sel || new == selmon->sel->tags || new == 0:
+setclienttags(c, new):
+	if !c || new == c->tags || new == 0:
 		return
-	// assert: since selmon->sel != NULL, ISVISIBLE(selmon->sel)
-	selmon->sel->tags = new
-	if !ISVISIBLE(selmon->sel):
-		focusmc(selmon, nextvisible(selmon->stack))
-		arrange(selmon)
-		showhide(selmon)
-	drawbar(selmon) // changed: c->tags, maybe m->sel
+	wasvisible = ISVISIBLE(c)
+	c->tags = new
+	setsel(c->mon, nextvisible(c->mon->stack))
+	if ISVISIBLE(c) != wasvisible:
+		arrange(c->mon)
+		showhide(c->mon)
+	drawbar(c->mon) // changed: c->tags
 
-setmontags:
-	if new == selmon->tags || new == 0:
+setmontags(m, new):
+	if new == m->tags || new == 0:
 		return
-	// assert: selmon->sel == NULL || ISVISIBLE(selmon->sel)
-	selmon->tags = new
-	if !selmon->sel || !ISVISIBLE(selmon->sel): // can this be simplified?
-		focusmc(selmon, nextvisible(selmon->stack))
-	arrange(selmon)
-	showhide(selmon)
-	drawbar(selmon)
+	// assert: m->sel == NULL || ISVISIBLE(m->sel)
+	m->tags = new
+	// It is possible that the tag change may make a more recently
+	// focused client visible, requiring that m->sel be updated.  This will
+	// not happen when m == selmon, because selmon->sel is always the
+	// first client in selmon's stack.
+	setsel(m, nextvisible(m->stack))
+	arrange(m)
+	showhide(m)
+	drawbar(m) // changed: m->tags
 
 ## List management
 
 attachto(c, m):
 	if c->mon != m:
-        if c->mon:
-            detach(c);
-        c->mon = m;
-        if c->mon:
-            c->next = c->mon->clients;
-            c->mon->clients = c;
+		if c->mon:
+			detach(c);
+		c->mon = m;
+		if c->mon:
+			c->next = c->mon->clients;
+			c->mon->clients = c;
 
-            c->snext = c->mon->stack;
-            c->mon->stack = c;
-            if ISVISIBLE(c):
-                c->mon->sel = c;
+			c->snext = c->mon->stack;
+			c->mon->stack = c;
+			if ISVISIBLE(c):
+				c->mon->sel = c;
 
 detach(c): // PRECONDITION: c != c->mon->sel
 	Client **tc;
@@ -347,15 +429,29 @@ prevtiled(c):
 			p = i;
 	return p;
 
-tostacktop: // PRECONDITION: c->mon == selmon
-    // NOTE: c may be NULL, which sets c->mon->sel to NULL
+tostacktop(c):
+	// NOTE: c may be NULL, which sets selmon->sel to NULL
 	Client **tc;
 
-    if (c->mon->sel = c):
-        for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
-        *tc = c->snext;
-        c->snext = c->mon->stack;
-        c->mon->stack = c;
+	if c:
+		c->mon->sel = c;
+		for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+		*tc = c->snext;
+		c->snext = c->mon->stack;
+		c->mon->stack = c;
+	else
+		selmon->sel = NULL
+
+tostacktop2(m, c): // PRECONDITION: c == NULL || m == c->mon
+	// NOTE: c may be NULL, which sets m->sel to NULL
+	// if m != c->mon, this reattaches
+	Client **tc;
+
+	if (m->sel = c):
+		for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+		*tc = c->snext;
+		c->snext = m->stack;
+		m->stack = c;
 
 
 ## Client management
