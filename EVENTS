@@ -27,7 +27,7 @@ keypress:
 ## Exposure
 
 expose:
-	assert(w is a barwin)
+	EXPECT(w is a barwin)
 	as-is
 
 ## FocusChange
@@ -83,7 +83,7 @@ tagmon: // change monitor of selected client (without following it)
 	new = nextvisible(c->snext)
 	focusmc(selmon, new)
 	? raiseclient(new) or restack(new->mon)
-	// assert: selmon->sel != c
+	EXPECT(selmon->sel != c)
 
 	newmon = monitor to send to
 	c->tags = m->tags
@@ -287,7 +287,7 @@ setselmon(m):
 		drawbar(selmon)
 
 focusmc(m, c):
-	assert(m && (!c || c->mon == m))
+	EXPECT(m && (!c || c->mon == m))
 	if m != selmon || c != selmon->sel: // needed??
 		unfocussel_old(m) // no-op if m != selmon
 		selectmon(m) // no-op if m == selmon
@@ -383,7 +383,7 @@ setclienttags(c, new):
 setmontags(m, new):
 	if new == m->tags || new == 0:
 		return
-	// assert: m->sel == NULL || ISVISIBLE(m->sel)
+	EXPECT(m->sel == NULL || ISVISIBLE(m->sel))
 	m->tags = new
 	// It is possible that the tag change may make a more recently
 	// focused client visible, requiring that m->sel be updated.  This will

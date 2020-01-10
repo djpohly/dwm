@@ -147,6 +147,7 @@ static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
 static void attachto(Client *c, Monitor *m);
+static void attachtosel(Client *c, Monitor *m);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void cleanup(void);
@@ -163,10 +164,8 @@ static void drawbar(Monitor *m);
 static void drawbars(void);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
-static void fixsel(Monitor *m);
 static void focus(Client *c);
 static void focusclient(Client *c);
-static void focusclientmon(Client *c, Monitor *m);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focussel(Monitor *m);
@@ -199,7 +198,6 @@ static void restack(Monitor *m);
 static void run(void);
 static void scan(void);
 static int sendevent(Client *c, Atom proto);
-static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setclienttags(Client *c, unsigned int tags);
 static void setfullscreen(Client *c, int fullscreen);
@@ -232,6 +230,7 @@ static void updateclientlist(void);
 static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
+static void updatesel(Monitor *m);
 static void updatestatus(void);
 static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
@@ -401,7 +400,8 @@ attachto(Client *c, Monitor *m)
 	if (c->mon == m)
 		return;
 	if (c->mon) {
-		detach(c); // calls fixsel(c->mon)
+		detach(c);
+		updatesel(c->mon);
 		arrange(c->mon); // <-req
 		drawbar(c->mon); // <-req
 	}
@@ -409,11 +409,52 @@ attachto(Client *c, Monitor *m)
 		c->next = c->mon->clients;
 		c->snext = c->mon->stack;
 		c->mon->clients = c->mon->stack = c;
-		fixsel(m); // <-req
+// XXX order of updatesel vs arrange vs showhide (need to be mapped to focus)
+		updatesel(m); // <-req
 		arrange(m); // <-req
 		showhide(m->stack); // <-req
 		drawbar(m); // <-req
 	}
+}
+
+void
+attachto2(Client *c, Monitor *m)
+{
+	EXPECT(c);
+	EXPECT(c->mon); // for now
+
+	Monitor *old = selmon;
+	attachtosel(c, m);
+	selectmon(old);
+}
+
+void
+attachtosel(Client *c, Monitor *m)
+{
+	EXPECT(c);
+	EXPECT(c->mon == selmon);
+	EXPECT(c == selmon->sel);
+	EXPECT(c == selmon->stack);
+
+	Monitor *old = c->mon;
+	if (old == m)
+		return;
+
+	detach(c);
+	if (c == selmon->sel)
+		selmon = m;
+	c->mon = m;
+	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
+	c->next = m->clients;
+	c->snext = m->stack;
+	m->clients = m->stack = m->sel = c;
+
+	updatesel(old);
+
+	arrange(old);
+	arrange(m);
+	//req: drawbar(old);
+	//req: drawbar(m);
 }
 
 void
@@ -646,8 +687,8 @@ destroynotify(XEvent *e) /* EVENT */
 		unmanage(c, 1);
 }
 
-void
-detach(Client *c) /* precondition: c->mon != NULL.  note: does not update sel. */
+void /* requires updatesel(c->mon), arrange(c->mon), drawbar(c->mon) */
+detach(Client *c)
 {
 	Client **tc;
 
@@ -655,11 +696,6 @@ detach(Client *c) /* precondition: c->mon != NULL.  note: does not update sel. *
 	*tc = c->next;
 	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
-
-	fixsel(c->mon);
-
-	arrange(c->mon); // <-req
-	drawbar(c->mon); // <-req
 }
 
 Monitor *
@@ -758,17 +794,6 @@ expose(XEvent *e) /* EVENT */
 		drawbar(wintomon(ev->window));
 }
 
-void /* IDEMPOTENT, requires call to drawbar(m) if m->sel changes */
-fixsel(Monitor *m)
-{
-	Client *c = nextvisible(m->stack);
-	if (m->sel == c)
-		return;
-	unfocussel(m);
-	m->sel = c;
-	focussel(m);
-}
-
 void
 focus(Client *c)
 {
@@ -795,7 +820,7 @@ focusclient(Client *c)
 	if (!c)
 		return;
 	tostacktop(c);
-	fixsel(c->mon);
+	updatesel(c->mon);
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
@@ -1080,13 +1105,11 @@ manage(Window w, XWindowAttributes *wa)
 		(unsigned char *) &(c->win), 1);
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
 	setclientstate(c, NormalState);
-	if (c->mon == selmon)
-		setfocus(NULL);
 	showhide(c->mon->stack);
+	updatesel(selmon); // focus it if it appears on selmon
 	arrange(c->mon);
 	restack(c->mon);
 	XMapWindow(dpy, c->win);
-	focus(NULL);
 	drawbar(c->mon); // rearrange stuff in manage?
 }
 
@@ -1137,11 +1160,8 @@ motionnotify(XEvent *e) /* EVENT */
 
 	if (ev->window != root)
 		return;
-	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
-		setfocus(NULL);
+	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon)
 		selectmon(m);
-		focus(NULL);
-	}
 	mon = m;
 }
 
@@ -1150,7 +1170,7 @@ movemouse(const Arg *arg) /* COMMAND */
 {
 	int x, y, ocx, ocy, nx, ny;
 	Client *c;
-	Monitor *m;
+	Monitor *m, *om;
 	XEvent ev;
 	Time lasttime = 0;
 
@@ -1158,9 +1178,8 @@ movemouse(const Arg *arg) /* COMMAND */
 		return;
 	if (c->isfullscreen) /* no support moving fullscreen windows by mouse */
 		return;
-	// XXX restack because this happens on click, so bring focused window to
-	// top visually
-	restack(selmon);
+	// XXX this happens on click, so bring focused window to top visually
+	raiseclient(c);
 	ocx = c->x;
 	ocy = c->y;
 	if (!getrootptr(&x, &y))
@@ -1200,12 +1219,13 @@ movemouse(const Arg *arg) /* COMMAND */
 		}
 	} while (ev.type != ButtonRelease);
 	XUngrabPointer(dpy, CurrentTime);
+	EXPECT(c == selmon->sel);
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
-		// assert: c == selmon->sel
-		setfocus(NULL);
-		setxfocus(NULL);
-		sendmon(c, m);
-		selectmon(m);
+		om = c->mon;
+		attachtosel(c, m);
+		EXPECT(selmon == m);
+		drawbar(om);
+		drawbar(m);
 	}
 }
 
@@ -1319,7 +1339,7 @@ resizemouse(const Arg *arg) /* COMMAND */
 {
 	int ocx, ocy, nw, nh;
 	Client *c;
-	Monitor *m;
+	Monitor *m, *om;
 	XEvent ev;
 	Time lasttime = 0;
 
@@ -1365,11 +1385,12 @@ resizemouse(const Arg *arg) /* COMMAND */
 	XUngrabPointer(dpy, CurrentTime);
 	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
-		// assert: c == selmon->sel
-		setfocus(NULL);
-		setxfocus(NULL);
-		sendmon(c, m);
-		selectmon(m);
+		c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
+		om = c->mon;
+		attachtosel(c, m);
+		EXPECT(selmon == m);
+		drawbar(om);
+		drawbar(m);
 	}
 }
 
@@ -1483,21 +1504,6 @@ sendevent(Client *c, Atom proto)
 }
 
 void
-sendmon(Client *c, Monitor *m)
-{
-	Monitor *oldmon = c->mon;
-	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
-	attachto(c, m);
-	showhide(oldmon->stack);
-	showhide(m->stack);
-	arrange(oldmon);
-	arrange(m);
-	focus(NULL);
-	drawbar(oldmon);
-	drawbar(m);
-}
-
-void
 setclientstate(Client *c, long state)
 {
 	long data[] = { state, None };
@@ -1514,7 +1520,7 @@ setclienttags(Client *c, unsigned int new)
 		return;
 	vis = ISVISIBLE(c);
 	c->tags = new;
-	fixsel(c->mon);
+	updatesel(c->mon);
 	if (vis != ISVISIBLE(c)) {
 		arrange(c->mon);
 		showhide(c->mon->stack);
@@ -1594,7 +1600,7 @@ setmontags(Monitor *m, unsigned int new)
 		return;
 	m->seltags ^= 1;
 	m->tagset[m->seltags] = new;
-	fixsel(m);
+	updatesel(m);
 
 	arrange(m); // <- req
 	showhide(m->stack); // <- req
@@ -1767,16 +1773,13 @@ tag(const Arg *arg) /* COMMAND */
 void
 tagmon(const Arg *arg) /* COMMAND */
 {
-	Monitor *m;
+	Monitor *m = selmon;
 
 	if (!selmon->sel || !mons->next)
 		return;
 
-	m = dirtomon(arg->i);
-	EXPECT(m != selmon);
-
-	selmon->sel->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
-	attachto(selmon->sel, m);
+	attachtosel(selmon->sel, dirtomon(arg->i));
+	selectmon(m);
 }
 
 void
@@ -1899,7 +1902,6 @@ unmanage(Client *c, int destroyed)
 		XUngrabServer(dpy);
 	}
 	free(c);
-	focus(NULL);
 	updateclientlist();
 	showhide(m->stack);
 	arrange(m);
@@ -2057,6 +2059,17 @@ updatenumlockmask(void)
 				== XKeysymToKeycode(dpy, XK_Num_Lock))
 				numlockmask = (1 << i);
 	XFreeModifiermap(modmap);
+}
+
+void /* IDEMPOTENT, requires call to drawbar(m) if m->sel changes */
+updatesel(Monitor *m)
+{
+	Client *c = nextvisible(m->stack);
+	if (m->sel == c)
+		return;
+	unfocussel(m);
+	m->sel = c;
+	focussel(m);
 }
 
 void

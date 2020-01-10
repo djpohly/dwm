@@ -1,13 +1,99 @@
 /* NEW THOUGHT (argh)
  * 1. Sometimes we choose a different selmon and focus its ->sel.
+ *    (focusmon/selectmon)
  * 2. Sometimes we focus a different client and keep selmon.
- * 3. However, sometimes we need to change selmon and *bring ->sel with us*.
+ *    (focusclient/tostacktop/updatesel)
+ * 3. Sometimes we move a client from one monitor to another without focus
+ *    following it.
+ * 4. However, sometimes we need to change selmon and *bring ->sel with us*.
  *
- * If we compose 3 = 1 + 2, then focus flickers briefly to new->sel.
- * If we compose 3 = 2 + 1, then focus flickers briefly to old->sel.
+ * If we compose 4 = 1 + 2, then focus flickers briefly to new->sel.
+ * If we compose 4 = 2 + 1, then focus flickers briefly to old->sel.
  *
  * What parts can we break these all into that will work for all cases?
+ *
+ * New focusmc(m, c): set selmon to m and selmon->sel to c, reattaching c to m
+ * if needed?
+ *
+ * 1. Move client to another monitor with no focus change (i.e. selmon moves to
+ * the other monitor as well).
+ * 2. Select another monitor, with focus moving to m->sel.
+ * 3. Select and move focus to another client on the same monitor.
+ *
+ * Okay.  We need to be able to:
+ *  - Focus client c within the same selmon.
+ *    . Raise client c to the top on its monitor and update focus.
+ *  - Select (and maybe focus) the topmost (newly) visible client on a monitor.
+ *    . Raise nextvisible(m->stack) to the top on its monitor and update focus.
+ *  - Select a different monitor and focus its sel client.
+ *    . Select monitor m, focusing its topmost client.
+ *  - Focus client c on monitor m, changing focus to that monitor.
+ *    . Raise client c to the top on its monitor.
+ *    . Select monitor m, focusing its topmost client.
+ *  - Send (the selected) client to another monitor, focusing the next on
+ *    selmon.
+ *    . Move c to m without changing focus.
+ *    . Select original monitor, focusing its topmost client.
+ *  - Send (the selected) client to another monitor, changing selmon to match
+ *    and leaving focus on the same client.
+ *    . Move c to m without changing focus.
+ *
+ * Invariant-preserving primitives:
+ *  - updatesel(m): Update sel to match topmost client on monitor m, and give it
+ *    focus as well if m == selmon.
+ *  - focusclient(c): Raise a particular client to the top on its monitor, and
+ *    if m == selmon, give it focus as well.
+ *  - selectmon(m): Select a particular monitor, focusing its topmost client (or
+ *    none).
+ *  - moveto(c, m): Move client c to monitor m without changing focus.  If
+ *    c == selmon->sel at start, then selmon = m by the end.
  */
+
+// This function should change c->mon to m without causing the focus (i.e. the
+// value of the expression selmon->sel) to change.  It will thus have the
+// following before/after characteristics:
+//   - Before: old == m
+//     - After: no change needed
+//   - Before: old != selmon and m != selmon
+//     - After: no change to selmon, just attach c to m
+//   - Before: old == selmon and c == old->sel
+//     - After: m == selmon and c == m->sel
+//   - Before: old == selmon and c != old->sel
+//     - After: old == selmon and c == m->sel
+//   - Before: m == selmon and m->sel != NULL
+//     - After: attach c behind m->sel, no change to selmon or m->sel
+//   - Before: m == selmon and m->sel == NULL
+//     - WHAT DO - attaching c to m anywhere makes it the topmost visible.
+//       Before this there is no client focused.  Preserving invariant forces us
+//       to make a focus change here.
+void
+attachtosel(Client *c, Monitor *m)
+{
+	EXPECT(c);
+	EXPECT(c->mon == selmon);
+	EXPECT(c == selmon->sel);
+	EXPECT(c == selmon->stack);
+	Monitor *old = c->mon;
+	if (old == m)
+		return;
+
+	detach(c);
+	c->mon = m;
+	c->next = m->clients;
+	c->snext = m->stack;
+	m->clients = m->stack = c;
+
+	selmon = m;
+	selmon->sel = c;
+
+	updatesel(old);
+
+	/* req: */
+	//arrange(old);
+	//drawbar(old);
+	//arrange(m);
+	//drawbar(m);
+}
 
 /* Set X focus, window border, grabbuttons */
 /* Change m->sel */
@@ -18,7 +104,7 @@
 /* When you change monitor focus, this focuses a client.  That client should be 
  * tostacktop'd. */
 
-/* Feel free to call fixsel(m) anytime you touch m->stack, m->tagset,
+/* Feel free to call updatesel(m) anytime you touch m->stack, m->tagset,
  * m->seltags, or c->tags */
 
 /* Use selectmon(m) to change selmon */
@@ -97,7 +183,7 @@ xunfocus(m)
 }
 
 void /* IDEMPOTENT, requires call to drawbar(m) if m->sel changes */
-fixsel(Monitor *m)
+updatesel(Monitor *m)
 {
 	Client *c = nextvisible(m->stack);
 	if (m->sel == c)
@@ -119,7 +205,7 @@ focusclient(Client *c)
 	c->snext = c->mon->stack;
 	c->mon->stack = c;
 
-	fixsel(c->mon);
+	updatesel(c->mon);
 }
 
 void
@@ -181,7 +267,7 @@ setclienttags(Client *c, unsigned int new)
 		return;
 	vis = ISVISIBLE(c);
 	c->tags = new;
-	fixsel(c->mon);
+	updatesel(c->mon);
 	if vis != ISVISIBLE(c) {
 		arrange(c->mon);
 		showhide(c->mon->stack);
@@ -197,7 +283,7 @@ setmontags(Monitor *m, unsigned int new)
 		return;
 	m->seltags ^= 1;
 	m->tagset[m->seltags] = new;
-	fixsel(m);
+	updatesel(m);
 
 	arrange(m); // <- req
 	showhide(m); // <- req
@@ -239,7 +325,7 @@ detach(Client *c)
 	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
 	*tc = c->snext;
 
-	fixsel(c->mon);
+	updatesel(c->mon);
 
 	arrange(c->mon); // <-req
 	drawbar(c->mon); // <-req
@@ -251,7 +337,7 @@ attachto(Client *c, Monitor *m)
 	if (c->mon == m)
 		return;
 	if (c->mon) {
-		detach(c); // calls fixsel(c->mon)
+		detach(c); // calls updatesel(c->mon)
 		arrange(c->mon); // <-req
 		drawbar(c->mon); // <-req
 	}
@@ -259,7 +345,7 @@ attachto(Client *c, Monitor *m)
 		c->next = c->mon->clients;
 		c->snext = c->mon->stack;
 		c->mon->clients = c->mon->stack = c;
-		fixsel(m); // <-req
+		updatesel(m); // <-req
 		arrange(m); // <-req
 		showhide(m->stack); // <-req
 		drawbar(m); // <-req
