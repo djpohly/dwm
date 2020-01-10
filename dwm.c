@@ -161,7 +161,6 @@ static void drawbar(Monitor *m);
 static void drawbars(void);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
-static void focus(Client *c);
 static void focusclient(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
@@ -583,7 +582,8 @@ configurenotify(XEvent *e) /* EVENT */
 				showhide(stack);
 				arrange(m);
 			}
-			focus(NULL);
+			updatesel(selmon);
+			updatesel(mons);
 			drawbars();
 		}
 	}
@@ -754,26 +754,6 @@ expose(XEvent *e) /* EVENT */
 
 	if (ev->count == 0)
 		drawbar(wintomon(ev->window));
-}
-
-void
-focus(Client *c)
-{
-	if (!c || !ISVISIBLE(c, c->mon))
-		for (c = stack; c && !ISVISIBLE(c, selmon); c = c->snext);
-	// XXX: Can we assume selmon->sel already has X focus if != NULL?
-	setxfocus(c);
-	if (c == selmon->sel)
-		return;
-	if (c) {
-		selectmon(c->mon);
-		if (c->isurgent)
-			seturgent(c, 0);
-		tostacktop(c);
-		setfocus(c);
-	}
-	selmon->sel = c;
-	drawbar(selmon);
 }
 
 void
@@ -1636,7 +1616,7 @@ setup(void)
 	XChangeWindowAttributes(dpy, root, CWEventMask|CWCursor, &wa);
 	XSelectInput(dpy, root, wa.event_mask);
 	grabkeys();
-	focus(NULL);
+	setxfocus(NULL);
 	drawbars();
 }
 
