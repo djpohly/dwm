@@ -2180,7 +2180,7 @@ zoom(const Arg *arg) /* COMMAND ✓ */
 	// focusclient(c); // dwm behavior
 	raiseclient(c);
 	arrange(c->mon);
-	// drawbar(c); // if focusclient above
+	// drawbar(c->mon); // if focusclient above
 }
 
 int
