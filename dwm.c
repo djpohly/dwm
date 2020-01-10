@@ -1995,7 +1995,6 @@ updategeom(void)
 #ifdef XINERAMA
 	if (XineramaIsActive(dpy)) {
 		int i, j, n, nn;
-		Client *c;
 		Monitor *m;
 		XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
 		XineramaScreenInfo *unique = NULL;
@@ -2032,12 +2031,9 @@ updategeom(void)
 		} else { /* less monitors available nn < n */
 			for (i = nn; i < n; i++) {
 				for (m = mons; m && m->next; m = m->next);
-				while ((c = m->clients)) {
-					dirty = 1;
-					attachto(c, mons);
-				}
-				if (m == selmon)
-					dirty = 1;
+				dirty = dirty || m->clients || m == selmon;
+				while (m->clients)
+					attachto(m->clients, mons);
 				cleanupmon(m);
 			}
 		}
