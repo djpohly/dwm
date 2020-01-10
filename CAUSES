@@ -1,0 +1,223 @@
+/* Set X focus, window border, grabbuttons */
+/* Change m->sel */
+/* Move client to stack top */
+/* Focus different client on selmon */
+/* Change selmon */
+
+/* When you change monitor focus, this focuses a client.  That client should be 
+ * tostacktop'd. */
+
+void
+xsetfocus(Client *c)
+{
+	XSetInputFocus(dpy, c ? c->win : root, RevertToPointerRoot, CurrentTime);
+	if (!c) {
+		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
+		return;
+	}
+	if (!c->neverfocus)
+		XChangeProperty(dpy, root, netatom[NetActiveWindow],
+			XA_WINDOW, 32, PropModeReplace,
+			(unsigned char *) &(c->win), 1);
+	xsendevent(c, wmatom[WMTakeFocus]);
+}
+
+void
+xfocus(Monitor *m)
+{
+	if (m != selmon)
+		return;
+	xsetfocus(m->sel); /* call this on NULL to set root focus */
+	if (!m->sel)
+		return;
+	if (m->sel->isurgent)
+		seturgent(m->sel, 0);
+	xgrabbuttons(m->sel, 1);
+	XSetWindowBorder(dpy, m->sel->win, scheme[SchemeSel][ColBorder].pixel);
+}
+
+void
+xunfocus(m)
+{
+	if (m != selmon || !m->sel)
+		return;
+	xgrabbuttons(m->sel, 0);
+	XSetWindowBorder(dpy, m->sel->win, scheme[SchemeNorm][ColBorder].pixel);
+}
+
+void /* IDEMPOTENT, requires call to drawbar(m) if m->sel changes */
+fixsel(Monitor *m)
+{
+	Client *c = nextvisible(m->stack);
+	if (m->sel == c)
+		return;
+	xunfocus(m);
+	m->sel = c;
+	xfocus(m);
+}
+
+void /* requires call to drawbar(m) if m->sel changes */
+focusclient(Client *c)
+{
+	Client **tc;
+	if (!c)
+		return;
+
+	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
+	c->snext = c->mon->stack;
+	c->mon->stack = c;
+
+	fixsel(c->mon);
+}
+
+void
+selectmon(Monitor *m)
+{
+	if (selmon == m)
+		return;
+	old = selmon;
+	focusclient(m->sel); /* bring to top of stack */
+	xunfocus(selmon);
+	selmon = m;
+	xfocus(m);
+	drawbar(old);
+
+	drawbar(m); // <- req
+}
+
+void
+focusmon(const Arg *arg)
+{
+	Monitor *m;
+	if (!mons->next)
+		return;
+	m = dirtomon(arg->i);
+	selectmon(m);
+	drawbar(m);
+}
+
+void
+focusstack(const Arg *arg)
+{
+	Client *c;
+	if (!selmon->sel)
+		return;
+	c = arg->i > 0 ? nextvisible(selmon->sel) : prevvisible(selmon->sel);
+	EXPECT(c); // since sel should be visible
+	if (c == selmon->sel)
+		return;
+	focusclient(c);
+	drawbar(c->mon);
+}
+
+void
+focusclientmon(Client *c, Monitor *m)
+{
+	EXPECT(c->mon == m);
+	focusclient(c);
+	selectmon(m);
+
+	drawbar(m); // <- req
+}
+
+void
+setclienttags(Client *c, unsigned int new)
+{
+	int vis;
+	if (!c || !new || new == c->tags)
+		return;
+	vis = ISVISIBLE(c);
+	c->tags = new;
+	fixsel(c->mon);
+	if vis != ISVISIBLE(c) {
+		arrange(c->mon);
+		showhide(c->mon->stack);
+	}
+
+	drawbar(m); // <- req
+}
+
+void
+setmontags(Monitor *m, unsigned int new)
+{
+	if (!new || new == m->tags)
+		return;
+	m->tags = new;
+	fixsel(m);
+
+	arrange(m); // <- req
+	showhide(m); // <- req
+	drawbar(m); // <- req
+}
+
+void
+tag(const Arg *arg)
+{
+	setclienttags(selmon->sel, arg->ui);
+}
+
+void
+toggletag(const Arg *arg)
+{
+	if (selmon->sel)
+		setclienttags(selmon->sel, selmon->sel->tags ^ arg->ui);
+}
+
+void
+view(const Arg *arg)
+{
+	setmontags(selmon, arg->ui);
+}
+
+void
+toggleview(const Arg *arg)
+{
+	setmontags(selmon, selmon->tags ^ arg->ui);
+}
+
+void
+detach(Client *c)
+{
+	Client **tc;
+
+	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+	for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
+
+	fixsel(c->mon);
+
+	arrange(c->mon); // <-req
+	drawbar(c->mon); // <-req
+}
+
+void
+attachto(Client *c, Monitor *m)
+{
+	if (c->mon == m)
+		return;
+	if (c->mon) {
+		detach(c);
+		arrange(c->mon); // <-req
+		drawbar(c->mon); // <-req
+	}
+	if ((c->mon = m)) {
+		c->next = c->mon->clients;
+		c->snext = c->mon->stack;
+		c->mon->clients = c->mon->stack = c;
+	}
+
+	fixsel(m); // <-req
+	arrange(m); // <-req
+	drawbar(m); // <-req
+}
+
+void
+tagmon(const Arg *arg)
+{
+	if (!selmon->sel || !mons->next)
+		return;
+	selmon->sel->tags = m->tags;
+	attachto(selmon->sel, m);
+}

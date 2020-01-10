@@ -160,10 +160,10 @@ togglefloating:
 ## Miscellaneous
 
 killclient:
-	send Delete event to window
+	// as-is
 
 quit:
-	running = 0
+	// as-is
 
 spawn:
 	// as-is
@@ -403,10 +403,9 @@ attachto(c, m):
 		c->mon = m;
 		if c->mon:
 			c->next = c->mon->clients;
-			c->mon->clients = c;
-
 			c->snext = c->mon->stack;
-			c->mon->stack = c;
+			c->mon->clients = c->mon->stack = c;
+
 			if ISVISIBLE(c):
 				c->mon->sel = c;
 
