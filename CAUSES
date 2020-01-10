@@ -1,3 +1,14 @@
+/* NEW THOUGHT (argh)
+ * 1. Sometimes we choose a different selmon and focus its ->sel.
+ * 2. Sometimes we focus a different client and keep selmon.
+ * 3. However, sometimes we need to change selmon and *bring ->sel with us*.
+ *
+ * If we compose 3 = 1 + 2, then focus flickers briefly to new->sel.
+ * If we compose 3 = 2 + 1, then focus flickers briefly to old->sel.
+ *
+ * What parts can we break these all into that will work for all cases?
+ */
+
 /* Set X focus, window border, grabbuttons */
 /* Change m->sel */
 /* Move client to stack top */
@@ -12,13 +23,39 @@
 
 /* Use selectmon(m) to change selmon */
 
+/* Sloppy focus invariant: if the mouse is in a window, then it is focused; if
+ * the mouse is not in a window, the MRU window is focused */
+
+/* Behavior when current focus window becomes invalid, to preserve invariant:
+ * either warp pointer to next visible MRU window (e.g. switching tags), or
+ * focus window under pointer (closing floating window).  Tricky if next visible
+ * MRU window is not raised - center of the window could be under another, in
+ * which case the pointer isn't "in" the window.  Should we raise/restack at
+ * this point?  Keep track of pointer coordinates last time this window was
+ * focused?
+ *
+ * I think raise+warp will be good. */
+
 void
 xraiseclient(Client *c)
 {
+	XWindowChanges wc;
+
 	if (c->isfloating)
 		XRaiseWindow(dpy, c->win);
-	else
-		XConfigureWindow(dpy, c->win
+	else {
+		wc.stack_mode = Below;
+		wc.sibling = c->mon->barwin;
+		XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
+	}
+	// From restack() in dwm.  Clears all EnterNotify events caused by
+	// restacking windows from the queue.  Do we need this here?  The
+	// consequence is that a call to xraiseclient can cause the raised
+	// client to be focused, if it is under the pointer.  Moot if we only
+	// raise a client when it is focused or we intend to focus it.
+	//
+	//XSync(dpy, False);
+	//while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
 
 void
@@ -117,7 +154,7 @@ focusstack(const Arg *arg)
 	Client *c;
 	if (!selmon->sel)
 		return;
-	c = arg->i > 0 ? nextvisible(selmon->sel) : prevvisible(selmon->sel);
+	c = arg->i > 0 ? nextvisclient(selmon->sel) : prevvisclient(selmon->sel);
 	EXPECT(c); // since sel should be visible
 	if (c == selmon->sel)
 		return;
@@ -156,9 +193,10 @@ setclienttags(Client *c, unsigned int new)
 void
 setmontags(Monitor *m, unsigned int new)
 {
-	if (!new || new == m->tags)
+	if (!new || new == m->tagset[m->seltags])
 		return;
-	m->tags = new;
+	m->seltags ^= 1;
+	m->tagset[m->seltags] = new;
 	fixsel(m);
 
 	arrange(m); // <- req
@@ -221,11 +259,11 @@ attachto(Client *c, Monitor *m)
 		c->next = c->mon->clients;
 		c->snext = c->mon->stack;
 		c->mon->clients = c->mon->stack = c;
+		fixsel(m); // <-req
+		arrange(m); // <-req
+		showhide(m->stack); // <-req
+		drawbar(m); // <-req
 	}
-
-	fixsel(m); // <-req
-	arrange(m); // <-req
-	drawbar(m); // <-req
 }
 
 void
@@ -263,5 +301,7 @@ zoom(const Arg *arg)
 	toclienttop(c);
 	// original dwm always focuses master after swap
 	// focusclient(c);
+	raiseclient(c);
 	arrange(c->mon);
+	// drawbar(c); // if focusclient above
 }
