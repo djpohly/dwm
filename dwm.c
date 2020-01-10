@@ -192,6 +192,7 @@ static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
 static void run(void);
 static void scan(void);
+static void selectmon(Monitor *m);
 static int sendevent(Client *c, Atom proto);
 static void setclientstate(Client *c, long state);
 static void setclienttags(Client *c, unsigned int tags);
@@ -205,7 +206,6 @@ static void setxfocus(Client *c);
 static void showhide(Client *c);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
-static void selectmon(Monitor *m);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
@@ -223,8 +223,8 @@ static void updatebars(void);
 static void updateclientlist(void);
 static int updategeom(void);
 static void updatenumlockmask(void);
-static void updatesizehints(Client *c);
 static void updatesel(Monitor *m);
+static void updatesizehints(Client *c);
 static void updatestatus(void);
 static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
@@ -1215,6 +1215,28 @@ quit(const Arg *arg) /* COMMAND ✓ */
 	running = 0;
 }
 
+void
+raiseclient(Client *c)
+{
+	XWindowChanges wc;
+
+	if (c->isfloating)
+		XRaiseWindow(dpy, c->win);
+	else {
+		wc.stack_mode = Below;
+		wc.sibling = c->mon->barwin;
+		XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
+	}
+	// From restack().  Clears all EnterNotify events caused by restacking
+	// windows from the queue.  Do we need this here?  The consequence is
+	// that a call to raiseclient can cause the raised client to be focused,
+	// if it is under the pointer.  Moot if we only raise a client when it
+	// is focused or we intend to focus it.
+	//
+	//XSync(dpy, False);
+	//while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
+}
+
 Monitor *
 recttomon(int x, int y, int w, int h)
 {
@@ -1312,28 +1334,6 @@ resizemouse(const Arg *arg) /* COMMAND */
 }
 
 void
-raiseclient(Client *c)
-{
-	XWindowChanges wc;
-
-	if (c->isfloating)
-		XRaiseWindow(dpy, c->win);
-	else {
-		wc.stack_mode = Below;
-		wc.sibling = c->mon->barwin;
-		XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
-	}
-	// From restack().  Clears all EnterNotify events caused by restacking
-	// windows from the queue.  Do we need this here?  The consequence is
-	// that a call to raiseclient can cause the raised client to be focused,
-	// if it is under the pointer.  Moot if we only raise a client when it
-	// is focused or we intend to focus it.
-	//
-	//XSync(dpy, False);
-	//while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
-}
-
-void
 restack(Monitor *m)
 {
 	Client *c;
@@ -1393,6 +1393,21 @@ scan(void)
 		if (wins)
 			XFree(wins);
 	}
+}
+
+void
+selectmon(Monitor *m)
+{
+	if (m == selmon)
+		return;
+	Monitor *old = selmon;
+	focusclient(m->sel); /* bring to top of stack */
+	setfocus(NULL);
+	selmon = m;
+	setfocus(m->sel);
+	drawbar(old);
+
+	drawbar(m); // <-req (hold here for now)
 }
 
 int
@@ -1664,21 +1679,6 @@ spawn(const Arg *arg) /* COMMAND ✓ */
 		perror(" failed");
 		exit(EXIT_SUCCESS);
 	}
-}
-
-void
-selectmon(Monitor *m)
-{
-	if (m == selmon)
-		return;
-	Monitor *old = selmon;
-	focusclient(m->sel); /* bring to top of stack */
-	setfocus(NULL);
-	selmon = m;
-	setfocus(m->sel);
-	drawbar(old);
-
-	drawbar(m); // <-req (hold here for now)
 }
 
 void
