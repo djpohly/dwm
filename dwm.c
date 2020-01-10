@@ -164,7 +164,6 @@ static void expose(XEvent *e);
 static void focusclient(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
-static void focussel(Monitor *m);
 static void focusstack(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
@@ -217,7 +216,6 @@ static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void tostacktop(Client *c);
 static void setfocus(Client *c);
-static void unfocussel(Monitor *m);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
@@ -782,29 +780,6 @@ focusmon(const Arg *arg) /* COMMAND */
 		return;
 	selectmon(dirtomon(arg->i));
 	drawbar(selmon);
-}
-
-void
-focussel(Monitor *m)
-{
-	if (m != selmon)
-		return;
-	setxfocus(m->sel); /* call this on NULL to set root focus */
-	if (!m->sel)
-		return;
-	if (m->sel->isurgent)
-		seturgent(m->sel, 0);
-	grabbuttons(m->sel, 1);
-	XSetWindowBorder(dpy, m->sel->win, scheme[SchemeSel][ColBorder].pixel);
-}
-
-void
-unfocussel(Monitor *m)
-{
-	if (m != selmon || !m->sel)
-		return;
-	grabbuttons(m->sel, 0);
-	XSetWindowBorder(dpy, m->sel->win, scheme[SchemeNorm][ColBorder].pixel);
 }
 
 void
@@ -1698,9 +1673,9 @@ selectmon(Monitor *m)
 		return;
 	Monitor *old = selmon;
 	focusclient(m->sel); /* bring to top of stack */
-	unfocussel(selmon);
+	setfocus(NULL);
 	selmon = m;
-	focussel(m);
+	setfocus(m->sel);
 	drawbar(old);
 
 	drawbar(m); // <-req (hold here for now)
@@ -1820,6 +1795,9 @@ setfocus(Client *c)
 		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeNorm][ColBorder].pixel);
 	}
 	if (c) {
+		setxfocus(c); /* call this on NULL to set root focus */
+		if (c->isurgent)
+			seturgent(c, 0);
 		grabbuttons(c, 1);
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
 	}
@@ -2015,9 +1993,11 @@ updatesel(Monitor *m)
 	Client *c = nextvisible(m, stack);
 	if (m->sel == c)
 		return;
-	unfocussel(m);
+	if (m == selmon)
+		setfocus(NULL);
 	m->sel = c;
-	focussel(m);
+	if (m == selmon)
+		setfocus(c);
 }
 
 void
