@@ -1163,7 +1163,6 @@ nextvisible(Monitor *m, Client *c)
 void
 propertynotify(XEvent *e) /* EVENT */
 {
-	int wasfixed, wasfloating;
 	Client *c;
 	Window trans;
 	XPropertyEvent *ev = &e->xproperty;
@@ -1181,31 +1180,20 @@ propertynotify(XEvent *e) /* EVENT */
 				showhide(stack);
 				arrange(c->mon);
 				restack(c->mon);
-				if (c == c->mon->sel)
-					drawbar(c->mon);
 			}
 			break;
 		case XA_WM_NORMAL_HINTS:
-			wasfixed = c->isfixed;
 			updatesizehints(c);
-			if (c == c->mon->sel && c->isfixed != wasfixed)
-				drawbar(c->mon);
 			break;
 		case XA_WM_HINTS:
 			updatewmhints(c);
 			break;
 		}
-		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
+		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName])
 			updatetitle(c);
-			if (c == c->mon->sel)
-				drawbar(c->mon);
-		}
-		if (ev->atom == netatom[NetWMWindowType]) {
-			wasfloating = c->isfloating;
+		if (ev->atom == netatom[NetWMWindowType])
 			updatewindowtype(c);
-			if (c == c->mon->sel && c->isfloating != wasfloating)
-				drawbar(c->mon);
-		}
+		drawbar(c->mon);
 	}
 }
 
