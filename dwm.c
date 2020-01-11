@@ -1438,10 +1438,11 @@ setclienttags(Client *c, unsigned int new)
 void
 setfullscreen(Client *c, int fullscreen)
 {
-	if (fullscreen && !c->isfullscreen) {
+	if (c->isfullscreen == fullscreen)
+		return;
+	if ((c->isfullscreen = fullscreen)) {
 		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
 			PropModeReplace, (unsigned char*)&netatom[NetWMFullscreen], 1);
-		c->isfullscreen = 1;
 		c->oldstate = c->isfloating;
 		c->oldbw = c->bw;
 		c->bw = 0;
@@ -1452,10 +1453,9 @@ setfullscreen(Client *c, int fullscreen)
 		c->oldh = c->h;
 		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
 		XRaiseWindow(dpy, c->win);
-	} else if (!fullscreen && c->isfullscreen){
+	} else {
 		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
 			PropModeReplace, (unsigned char*)0, 0);
-		c->isfullscreen = 0;
 		c->isfloating = c->oldstate;
 		c->bw = c->oldbw;
 		// XXX: use resize() here to reapply size hints
@@ -1463,8 +1463,7 @@ setfullscreen(Client *c, int fullscreen)
 		showhide(stack);
 		arrange(c->mon);
 		restack(c->mon);
-	} else
-		return;
+	}
 	if (c == c->mon->sel)
 		drawbar(c->mon);
 }
