@@ -1191,23 +1191,19 @@ quit(const Arg *arg) /* COMMAND ✓ */
 void
 raiseclient(Client *c)
 {
+	XEvent ev;
 	XWindowChanges wc;
+	wc.stack_mode = Below;
+	wc.sibling = c->mon->barwin;
 
-	if (c->isfloating)
-		XRaiseWindow(dpy, c->win);
-	else {
-		wc.stack_mode = Below;
-		wc.sibling = c->mon->barwin;
+	if (!c->isfloating)
 		XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
-	}
-	// From restack().  Clears all EnterNotify events caused by restacking
-	// windows from the queue.  Do we need this here?  The consequence is
-	// that a call to raiseclient can cause the raised client to be focused,
-	// if it is under the pointer.  Moot if we only raise a client when it
-	// is focused or we intend to focus it.
-	//
-	//XSync(dpy, False);
-	//while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
+	else if (c->mon->sel->isfloating)
+		XRaiseWindow(dpy, c->win);
+	else
+		XLowerWindow(dpy, c->win);
+	XSync(dpy, False);
+	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
 
 Monitor *
