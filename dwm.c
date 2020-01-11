@@ -181,7 +181,6 @@ static void monocle(Monitor *m);
 static void motionnotify(XEvent *e);
 static void movemouse(const Arg *arg);
 static Client *nexttiled(Monitor *m, Client *c);
-static Client *nextvisible(Monitor *m, Client *c);
 static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
 static void raiseclient(Client *c);
@@ -1153,13 +1152,6 @@ nexttiled(Monitor *m, Client *c)
 	return c;
 }
 
-Client *
-nextvisible(Monitor *m, Client *c)
-{
-	for (; c && !VISIBLEON(c, m); c = c->snext);
-	return c;
-}
-
 void
 propertynotify(XEvent *e) /* EVENT */
 {
@@ -1972,7 +1964,9 @@ updatenumlockmask(void)
 void /* IDEMPOTENT, requires call to drawbar(m) if m->sel changes */
 updatesel(Monitor *m)
 {
-	Client *c = nextvisible(m, stack);
+	Client *c;
+
+	for (c = stack; c && !VISIBLEON(c, m); c = c->snext);
 	if (m->sel == c)
 		return;
 	if (m == selmon)
