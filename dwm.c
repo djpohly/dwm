@@ -188,7 +188,6 @@ static Monitor *recttomon(int x, int y, int w, int h);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
-static void restack(Monitor *m);
 static void run(void);
 static void scan(void);
 static void selectmon(Monitor *m);
@@ -1024,7 +1023,7 @@ manage(Window w, XWindowAttributes *wa)
 	showhide(stack);
 	updatesel(selmon); // focus it if it appears on selmon
 	arrange(c->mon);
-	restack(c->mon);
+	raiseclient(c);
 	XMapWindow(dpy, c->win);
 	drawbar(c->mon); // rearrange stuff in manage?
 }
@@ -1169,7 +1168,7 @@ propertynotify(XEvent *e) /* EVENT */
 				(c->isfloating = (wintoclient(trans)) != NULL)) {
 				showhide(stack);
 				arrange(c->mon);
-				restack(c->mon);
+				raiseclient(c);
 			}
 		} else if (ev->atom == XA_WM_NORMAL_HINTS)
 			updatesizehints(c);
@@ -1260,7 +1259,7 @@ resizemouse(const Arg *arg) /* COMMAND */
 		return;
 	if (c->isfullscreen) /* no support resizing fullscreen windows by mouse */
 		return;
-	restack(selmon);
+	raiseclient(c);
 	ocx = c->x;
 	ocy = c->y;
 	if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
@@ -1305,30 +1304,6 @@ resizemouse(const Arg *arg) /* COMMAND */
 		drawbar(om);
 		drawbar(m);
 	}
-}
-
-void
-restack(Monitor *m)
-{
-	Client *c;
-	XEvent ev;
-	XWindowChanges wc;
-
-	if (!m->sel)
-		return;
-	if (m->sel->isfloating || !m->lt[m->sellt]->arrange)
-		XRaiseWindow(dpy, m->sel->win);
-	if (m->lt[m->sellt]->arrange) {
-		wc.stack_mode = Below;
-		wc.sibling = m->barwin;
-		for (c = stack; c; c = c->snext)
-			if (!c->isfloating && VISIBLEON(c, m)) {
-				XConfigureWindow(dpy, c->win, CWSibling|CWStackMode, &wc);
-				wc.sibling = c->win;
-			}
-	}
-	XSync(dpy, False);
-	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
 
 void
@@ -1452,7 +1427,6 @@ setfullscreen(Client *c, int fullscreen)
 		c->oldw = c->w;
 		c->oldh = c->h;
 		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
-		XRaiseWindow(dpy, c->win);
 	} else {
 		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
 			PropModeReplace, (unsigned char*)0, 0);
@@ -1462,8 +1436,8 @@ setfullscreen(Client *c, int fullscreen)
 		resizeclient(c, c->oldx, c->oldy, c->oldw, c->oldh);
 		showhide(stack);
 		arrange(c->mon);
-		restack(c->mon);
 	}
+	raiseclient(c);
 	if (c == c->mon->sel)
 		drawbar(c->mon);
 }
@@ -1479,7 +1453,7 @@ setlayout(const Arg *arg) /* COMMAND */
 	// invariant: selmon->sel != NULL <=> any window is visible on selmon
 	if (selmon->sel)
 		arrange(selmon);
-	restack(selmon);
+	raiseclient(selmon->sel);
 	drawbar(selmon);
 }
 
@@ -1730,7 +1704,7 @@ togglefloating(const Arg *arg) /* COMMAND */
 		resize(selmon->sel, selmon->sel->x, selmon->sel->y,
 			selmon->sel->w, selmon->sel->h, 0);
 	arrange(selmon);
-	restack(selmon);
+	raiseclient(selmon->sel);
 	drawbar(selmon);
 }
 
@@ -1798,7 +1772,7 @@ unmanage(Client *c, int destroyed)
 	updateclientlist();
 	showhide(stack);
 	arrange(m);
-	restack(m);
+	raiseclient(m->sel);
 	drawbar(m);
 }
 
