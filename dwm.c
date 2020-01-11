@@ -1172,26 +1172,20 @@ propertynotify(XEvent *e) /* EVENT */
 	else if (ev->state == PropertyDelete)
 		return; /* ignore */
 	else if ((c = wintoclient(ev->window))) {
-		switch(ev->atom) {
-		default: break;
-		case XA_WM_TRANSIENT_FOR:
+		if (ev->atom == XA_WM_TRANSIENT_FOR) {
 			if (!c->isfloating && (XGetTransientForHint(dpy, c->win, &trans)) &&
 				(c->isfloating = (wintoclient(trans)) != NULL)) {
 				showhide(stack);
 				arrange(c->mon);
 				restack(c->mon);
 			}
-			break;
-		case XA_WM_NORMAL_HINTS:
+		} else if (ev->atom == XA_WM_NORMAL_HINTS)
 			updatesizehints(c);
-			break;
-		case XA_WM_HINTS:
+		else if (ev->atom == XA_WM_HINTS)
 			updatewmhints(c);
-			break;
-		}
-		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName])
+		else if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName])
 			updatetitle(c);
-		if (ev->atom == netatom[NetWMWindowType])
+		else if (ev->atom == netatom[NetWMWindowType])
 			updatewindowtype(c);
 		drawbar(c->mon);
 	}
