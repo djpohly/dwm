@@ -452,6 +452,7 @@ buttonpress(XEvent *e) /* EVENT */
 		else
 			click = ClkWinTitle;
 	} else if ((c = wintoclient(ev->window))) {
+		EXPECT(m == c->mon);
 		focusclient(c);
 		raiseclient(c); // raise on click
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);

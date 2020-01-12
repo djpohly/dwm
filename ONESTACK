@@ -1,0 +1,515 @@
+// # NOTES
+// 
+// - showhide makes no sense without arrange, because arrange depends on which
+//   windows are visible, and any change in this also requires showhide
+// 
+// Invisible clients can be anywhere in the stack without affecting focus.  What
+// do stack and focus look like when:
+//  1. There are no visible clients.  No focus.  Stack is MRU.
+//  2. There are visible clients, but none on selmon.  No focus.  Stack is MRU.
+//  3. There are visible clients on selmon.  First on stack is on selmon, because
+//     it was tostacktop'd when focused.
+// 
+// The following statements are equivalent:
+//  - There is a focused client.
+//  - There are visible clients on selmon.
+//  - The X focus does not belong the root window.
+//  - selmon->sel != NULL.
+//  - VISIBLEON(stack, selmon).
+// 
+// The following statements are equivalent:
+//  - Client c is focused.
+//  - Client c is the MRU visible client on selmon.
+//  - Client c has the "selected" border.
+//  - The X focus belongs to c.
+//  - selmon->sel == c.
+//  - There is a focused client && stack == c.
+// 
+// Invariants:
+//  - For any monitor m, m->sel == nextvisible(m, stack).  (denormalization)
+//  - The X focus belongs to selmon->sel if not NULL, otherwise the root.
+//    - Note: per ICCCM 4.1.10 advice, override-redirect (unmanaged) windows must
+//      either grab the keyboard or piggyback on the focus of a managed window, so
+//      we can assume that selmon->sel still "has focus"
+// 
+// Thoughts:
+// - A client is raised in the stack only when it is focused/selected.
+// - When a client is created:
+//   - If VISIBLEON(client, selmon), it is placed at the top of the stack, which
+//     triggers a focus change.
+//   - If !VISIBLEON(client, selmon) and selmon->sel == NULL, it is placed at the
+//     top of the stack, but will not affect focus.
+//   - If !VISIBLEON(client, selmon) and selmon->sel != NULL, pick one:
+//      1. It is placed second in the stack, behind selmon->sel.  (More consistent
+//         with behavior when creating on selmon.)
+//      2. It is placed at the bottom of the stack.  (More consistent with
+//         definition of stack as "most recently focused.")
+
+// # EVENTS
+
+// ## Structure/Substructure
+
+
+// ## Input
+
+void
+keypress()
+{
+	// as-is
+}
+
+
+// ## Exposure
+
+void
+expose()
+{
+	// EXPECT(w is a barwin)
+	// as-is
+}
+
+
+// ## FocusChange
+
+void
+focusin()
+{
+	// as-is
+}
+
+
+// ## Miscellany
+
+void
+mappingnotify()
+{
+	// as-is
+}
+
+
+// ## TODO
+
+void
+destroynotify()
+{
+	// as-is, check unmanage
+}
+
+void
+unmapnotify()
+{
+	// as-is for now
+	//  1. Check ICCCM/EWMH for Withdrawn rules
+	//  2. Handle extra events when showhide changes to map/unmap
+}
+
+void
+buttonpress()
+{
+	// ...
+	if ((c == wintoclient(ev->window))) {
+		EXPECT(m == c->mon);
+		if (c != selmon->sel) {
+			defocus(selmon->sel);
+			selmon = c->mon;
+			selmon->sel = c;
+			enfocus(selmon->sel);
+		}
+
+		raiseclient(c);
+		// ...
+	}
+	if (m != selmon) {
+		defocus(selmon->sel);
+		selmon = m;
+		enfocus(m->sel); // == selmon->sel
+	}
+	// ...
+}
+
+void
+clientmessage()
+{
+	// as-is, write setfullscreen
+}
+
+void
+configurenotify()
+{
+	// will want to take a look at updategeom
+	// ...
+	Client *c;
+	c = nextvisible(selmon, stack);
+	if (selmon->sel != c) {
+		defocus(selmon->sel);
+		selmon->sel = c;
+		enfocus(c); // == selmon->sel
+	}
+	mons->sel = nextvisible(mons, stack); // if mons == selmon, details handled above
+}
+
+void
+configurerequest()
+{
+	// as-is
+}
+
+void
+enternotify()
+{
+	// ...
+	c = wintoclient(ev->window);
+	if (c != selmon->sel) {
+		defocus(selmon->sel);
+		selmon = c ? c->mon : wintomon(ev->window);
+		if (c)
+			selmon->sel = c;
+		enfocus(selmon->sel);
+	}
+}
+
+void
+maprequest()
+{
+	// as-is, write manage
+}
+
+void
+motionnotify()
+{
+	static Monitor *mon = NULL;
+	// ...
+	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
+		defocus(selmon->sel);
+		selmon = m;
+		enfocus(selmon->sel);
+	}
+	mon = m;
+}
+
+void
+propertynotify()
+{
+	// as-is
+}
+
+
+// # COMMANDS
+
+// ## Focus/order
+
+void
+focusstack(const Arg *arg)
+{
+	if (!selmon->sel)  // if (!stack || !VISIBLEON(stack, selmon))
+		return;
+	Client *c = nextclientindir(selmon, selmon->sel, arg->i);
+	if (/* !c || */ c == selmon->sel)
+		return;
+
+	defocus(selmon->sel);
+	selmon->sel = c;
+	enfocus(c); // == selmon->sel
+
+	raiseclient(c); // or restack(c->mon);
+	drawbar(c->mon);
+}
+
+void
+focusmon(const Arg *arg)
+{
+	Monitor *old = selmon;
+	Monitor *m = dirtomon(arg->i);
+	if (m == selmon)
+		return;
+	defocus(old->sel); // == selmon->sel
+	selmon = m;
+	if (old->sel || m->sel) // technically, but could drop the conditional
+		enfocus(m->sel); // == selmon->sel
+	drawbar(old);
+	drawbar(m);
+}
+
+void
+zoom()
+{
+	// as-is
+}
+
+
+// ## Tag management
+
+void
+tag()
+{
+	// change tags of selected client
+	if (selmon->sel)
+		setclienttags(selmon->sel, arg->ui & TAGMASK);
+}
+
+void
+toggletag()
+{
+	// XOR selected client's tags with arg
+	if (selmon->sel)
+		setclienttags(selmon->sel, selmon->sel->tags ^ (arg->ui & TAGMASK));
+}
+
+void
+view()
+{
+	// change visible tags on m
+	unsigned int new = (arg->ui & TAGMASK);
+	if (!new)
+		new = selmon->tagset[selmon->seltags ^ 1];
+	setmontags(selmon, new);
+}
+
+void
+toggleview()
+{
+	setmontags(selmon, selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK));
+}
+
+void
+tagmon()
+{
+	// move client c to monitor new and maintain selmon
+	sendto(c, m, 0);
+}
+
+void
+movemouse() / resizemouse()
+{
+	// move client c to monitor new and maintain focus
+	sendto(c, m, 1);
+	raiseclient(c);
+
+	arrange(oldmon);
+	arrange(newmon);
+	drawbar(oldmon);
+	drawbar(newmon);
+}
+
+
+// ## Layout
+
+
+// ## Miscellaneous
+
+void
+killclient()
+{
+	// as-is
+}
+
+void
+quit()
+{
+	// as-is
+}
+
+void
+spawn()
+{
+	// as-is
+}
+
+void
+togglebar()
+{
+	// as-is, maybe later unmap barwin instead of moving
+}
+
+// ## TODO
+
+void
+incnmaster()
+{
+}
+
+void
+pushdown()
+{
+	if (!selmon->sel || selmon->sel->isfloating)
+		return;
+	if ((c = nexttiled(sel->next)))
+		moveafter(sel, c);
+	else
+		moveafter(sel, NULL);
+}
+
+void
+pushup()
+{
+}
+
+void
+setlayout()
+{
+}
+
+void
+setmfact()
+{
+}
+
+void
+togglefloating()
+{
+}
+
+
+// # FUNCTIONS
+
+// ## Focus
+
+void
+defocus(Client *c)
+{
+	if (!c) // XXX needed??
+		return;
+	grabbuttons(c, 0);
+	xborder(c, NORM);
+	// setxfocus(NULL) // should be followed by enfocus
+}
+
+void
+enfocus(Client *c)
+{
+	// should be called after defocus
+	setxfocus(c);
+	if (!c)
+		return;
+	tostacktop(c);
+	if (c->isurgent)
+		seturgent(c, 0);
+	grabbuttons(c, 1);
+	xborder(c, SEL);
+}
+
+// ## Layout
+
+void
+raiseclient(Client *c)
+{
+	// as-is
+}
+
+// ## Tags/monitors
+
+void
+setclienttags(Client *c, unsigned int new)
+{
+	int vis;
+	if (!new || new == c->tags)
+		return;
+
+	vis = VISIBLEON(c, c->mon);
+	c->tags = new;
+	if (vis == VISIBLEON(c, c->mon))
+		return;
+	next = nextvisible(c->mon, stack);
+	if (next != c->mon->sel) {
+		if (c->mon == selmon)
+			defocus(c->mon->sel); // == selmon->sel
+		c->mon->sel = next;
+		if (c->mon == selmon)
+			enfocus(c->mon->sel); // == next == selmon->sel
+	}
+}
+
+void
+setmontags(Monitor *m, unsigned int new)
+{
+	if (!new || new == m->tagset[m->seltags])
+		return;
+	m->seltags ^= 1;
+	m->tagset[m->seltags] = new;
+	c = nextvisible(m, stack);
+	if (m->sel == c)
+		return;
+	if (m == selmon)
+		defocus(m->sel); // == selmon->sel
+	m->sel = c;
+	if (m == selmon)
+		enfocus(m->sel); // == c == selmon->sel
+}
+
+void
+sendto(Client *c, Monitor *new, int keepfocus)
+{
+	// move client c to monitor new and maintain selmon or focus
+	EXPECT(c);
+	old = c->mon;
+	if (old == new)
+		return;
+
+	if ((oldfocus = selmon->sel) == c) {
+		if (keepfocus)
+			selmon = new;
+		else
+			defocus(c); // == selmon->sel
+	}
+
+	// Can move this below c->mon = new, change c->snext to stack, and
+	// remove the if condition
+	if (old->sel == c)
+		old->sel = nextvisible(old, c->snext);
+	c->tags = new->tags;
+	c->mon = new;
+	EXPECT(VISIBLEON(c, new));
+	new->sel = nextvisible(new, stack);
+	EXPECT(new->sel != NULL);
+
+	if (selmon->sel != oldfocus)
+		enfocus(selmon->sel); // == c
+}
+
+// ## List management
+
+Client *
+nextvisible(Monitor *m, Client *c)
+{
+	for (; c && !VISIBLEON(c, m); c = c->snext);
+	return c;
+}
+
+Client *
+nexttiled(Monitor *m, Client *c)
+{
+	for (; c && (c->isfloating || !VISIBLEON(c, m)); c = c->next);
+	return c;
+}
+
+Client *
+prevtiled(Monitor *m, Client *c)
+{
+	Client *i, *p = NULL;
+	for (i = clients; i && i != c; i = i->next)
+		if (!i->isfloating && VISIBLEON(i, m))
+			p = i;
+	return p;
+}
+
+// ## Client management
+
+void
+unmanage(Client *c)
+{
+	// May be able to coax sendto(c, NULL) to do this bit
+	EXPECT(c->mon != NULL);
+	if (c == c->mon->sel) {
+		if (c->mon == selmon)
+			defocus(c); // == selmon->sel
+		c->mon->sel = nextvisible(c->mon, stack);
+		if (c->mon == selmon)
+			enfocus(c->mon->sel); // == selmon->sel
+	}
+	if (!destroyed) {
+		// as-is
+	}
+	free(c);
+	// ...
+	// skip the raiseclient?
+}
