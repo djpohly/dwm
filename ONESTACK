@@ -111,19 +111,19 @@ buttonpress()
 		EXPECT(m == c->mon);
 		if (c != selmon->sel) {
 			defocus(selmon->sel);
+			enfocus(c);
 			selmon = c->mon;
 			selmon->sel = c;
-			enfocus(selmon->sel);
 		}
 
 		raiseclient(c);
 		// ...
 	}
-	if (m != selmon) {
+	if (m->sel != selmon->sel) {
 		defocus(selmon->sel);
-		selmon = m;
-		enfocus(m->sel); // == selmon->sel
+		enfocus(m->sel);
 	}
+	selmon = m;
 	// ...
 }
 
@@ -138,12 +138,11 @@ configurenotify()
 {
 	// will want to take a look at updategeom
 	// ...
-	Client *c;
-	c = nextvisible(selmon, stack);
+	Client *c = nextvisible(selmon, stack);
 	if (selmon->sel != c) {
 		defocus(selmon->sel);
+		enfocus(c);
 		selmon->sel = c;
-		enfocus(c); // == selmon->sel
 	}
 	mons->sel = nextvisible(mons, stack); // if mons == selmon, details handled above
 }
@@ -157,15 +156,21 @@ configurerequest()
 void
 enternotify()
 {
+	Monitor *m = NULL;
 	// ...
 	c = wintoclient(ev->window);
-	if (c != selmon->sel) {
-		defocus(selmon->sel);
-		selmon = c ? c->mon : wintomon(ev->window);
-		if (c)
-			selmon->sel = c;
-		enfocus(selmon->sel);
-	}
+	if (c == selmon->sel)
+		return;
+	if (!c) {
+		m = wintomon(ev->window);
+		c = m->sel;
+	} else
+		m = c->mon;
+
+	defocus(selmon->sel);
+	selmon = m;
+	selmon->sel = c;
+	enfocus(selmon->sel);
 }
 
 void
@@ -181,8 +186,8 @@ motionnotify()
 	// ...
 	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
 		defocus(selmon->sel);
+		enfocus(m->sel);
 		selmon = m;
-		enfocus(selmon->sel);
 	}
 	mon = m;
 }
@@ -208,8 +213,8 @@ focusstack(const Arg *arg)
 		return;
 
 	defocus(selmon->sel);
+	enfocus(c);
 	selmon->sel = c;
-	enfocus(c); // == selmon->sel
 
 	raiseclient(c); // or restack(c->mon);
 	drawbar(c->mon);
@@ -223,9 +228,9 @@ focusmon(const Arg *arg)
 	if (m == selmon)
 		return;
 	defocus(old->sel); // == selmon->sel
+	// Technically, if (old->sel || m->sel)
+	enfocus(m->sel); // == selmon->sel
 	selmon = m;
-	if (old->sel || m->sel) // technically, but could drop the conditional
-		enfocus(m->sel); // == selmon->sel
 	drawbar(old);
 	drawbar(m);
 }
@@ -411,11 +416,11 @@ setclienttags(Client *c, unsigned int new)
 		return;
 	next = nextvisible(c->mon, stack);
 	if (next != c->mon->sel) {
-		if (c->mon == selmon)
+		if (c->mon == selmon) {
 			defocus(c->mon->sel); // == selmon->sel
+			enfocus(next); // == next == selmon->sel
+		}
 		c->mon->sel = next;
-		if (c->mon == selmon)
-			enfocus(c->mon->sel); // == next == selmon->sel
 	}
 }
 
@@ -429,28 +434,25 @@ setmontags(Monitor *m, unsigned int new)
 	c = nextvisible(m, stack);
 	if (m->sel == c)
 		return;
-	if (m == selmon)
+	if (m == selmon) {
 		defocus(m->sel); // == selmon->sel
+		enfocus(c);
+	}
 	m->sel = c;
-	if (m == selmon)
-		enfocus(m->sel); // == c == selmon->sel
 }
 
 void
 sendto(Client *c, Monitor *new, int keepfocus)
 {
+	Client *oldfocus;
 	// move client c to monitor new and maintain selmon or focus
 	EXPECT(c);
 	old = c->mon;
 	if (old == new)
 		return;
 
-	if ((oldfocus = selmon->sel) == c) {
-		if (keepfocus)
-			selmon = new;
-		else
-			defocus(c); // == selmon->sel
-	}
+	if ((oldfocus = selmon->sel) == c && keepfocus)
+		selmon = new;
 
 	// Can move this below c->mon = new, change c->snext to stack, and
 	// remove the if condition
@@ -462,8 +464,10 @@ sendto(Client *c, Monitor *new, int keepfocus)
 	new->sel = nextvisible(new, stack);
 	EXPECT(new->sel != NULL);
 
-	if (selmon->sel != oldfocus)
-		enfocus(selmon->sel); // == c
+	if (selmon->sel != oldfocus) {
+		defocus(oldfocus);
+		enfocus(selmon->sel);
+	}
 }
 
 // ## List management
@@ -500,11 +504,12 @@ unmanage(Client *c)
 	// May be able to coax sendto(c, NULL) to do this bit
 	EXPECT(c->mon != NULL);
 	if (c == c->mon->sel) {
-		if (c->mon == selmon)
+		Client *next = nextvisible(c->mon, stack);
+		if (c->mon == selmon) {
 			defocus(c); // == selmon->sel
-		c->mon->sel = nextvisible(c->mon, stack);
-		if (c->mon == selmon)
-			enfocus(c->mon->sel); // == selmon->sel
+			enfocus(next);
+		}
+		c->mon->sel = next;
 	}
 	if (!destroyed) {
 		// as-is
