@@ -45,7 +45,11 @@
 #include "util.h"
 
 /* macros */
-#define EXPECT(cond)            do { if (cond) fprintf(stderr, "Expect `%s' failed in %s:%d\n", #cond, __FILE__, __LINE__); } while (0)
+static inline void expect_fail(const char *scond, const char *file, int line)
+{
+	fprintf(stderr, "Expect `%s' failed in %s:%d\n", scond, file, line);
+}
+#define EXPECT(cond)            do { if (!(cond)) expect_fail(#cond, __FILE__, __LINE__); } while (0)
 #define BUTTONMASK              (ButtonPressMask|ButtonReleaseMask)
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
@@ -161,7 +165,6 @@ static void drawbar(Monitor *m);
 static void drawbars(void);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
-static void focusclient(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
@@ -185,6 +188,7 @@ static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
 static void raiseclient(Client *c);
 static Monitor *recttomon(int x, int y, int w, int h);
+static void refocus(void);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
@@ -213,7 +217,6 @@ static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void tostacktop(Client *c);
-static void setfocus(Client *c);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
@@ -453,13 +456,14 @@ buttonpress(XEvent *e) /* EVENT */
 			click = ClkWinTitle;
 	} else if ((c = wintoclient(ev->window))) {
 		EXPECT(m == c->mon);
-		focusclient(c);
+		m->sel = c;
 		raiseclient(c); // raise on click
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 		click = ClkClientWin;
 	}
 	/* focus monitor after client is ready */
-	selectmon(m);
+	selmon = m;
+	refocus();
 	for (i = 0; i < LENGTH(buttons); i++)
 		if (click == buttons[i].click && buttons[i].func && buttons[i].button == ev->button
 		&& CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
@@ -739,9 +743,13 @@ enternotify(XEvent *e) /* EVENT */
 
 	if ((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != root)
 		return;
-	c = wintoclient(ev->window);
-	focusclient(c);
-	selectmon(c ? c->mon : wintomon(ev->window));
+	// XXX check the logic here
+	if ((c = wintoclient(ev->window))) {
+		selmon = c->mon;
+		selmon->sel = c;
+	} else
+		selmon = wintomon(ev->window);
+	refocus();
 }
 
 void
@@ -751,15 +759,6 @@ expose(XEvent *e) /* EVENT */
 
 	if (ev->count == 0)
 		drawbar(wintomon(ev->window));
-}
-
-void
-focusclient(Client *c)
-{
-	if (!c)
-		return;
-	tostacktop(c);
-	updatesel(c->mon);
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
@@ -807,8 +806,8 @@ focusstack(const Arg *arg) /* COMMAND */
 	EXPECT(c); // selmon->sel, at least, should be visible
 	if (/* !c || */ c == selmon->sel)
 		return;
-
-	focusclient(c);
+	selmon->sel = c;
+	refocus();
 	raiseclient(c);
 	drawbar(c->mon);
 }
@@ -1222,6 +1221,23 @@ recttomon(int x, int y, int w, int h)
 }
 
 void
+refocus()
+{
+	if (stack && stack != selmon->sel) {
+		grabbuttons(stack, 0);
+		XSetWindowBorder(dpy, stack->win, scheme[SchemeNorm][ColBorder].pixel);
+	}
+	setxfocus(selmon->sel);
+	if (selmon->sel) {
+		tostacktop(selmon->sel);
+		if (selmon->sel->isurgent)
+			seturgent(selmon->sel, 0);
+		grabbuttons(selmon->sel, 1);
+		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeSel][ColBorder].pixel);
+	}
+}
+
+void
 resize(Client *c, int x, int y, int w, int h, int interact)
 {
 	if (applysizehints(c, &x, &y, &w, &h, interact))
@@ -1304,6 +1320,18 @@ resizemouse(const Arg *arg) /* COMMAND */
 }
 
 void
+restack(Monitor *m, Client *c)
+{
+	if (!m->sel)
+		return;
+	/* restack from bottom up */
+	if (c->snext)
+		restack(m, c->snext);
+	if (c->mon == m)
+		raiseclient(c);
+}
+
+void
 run(void)
 {
 	XEvent ev;
@@ -1347,10 +1375,8 @@ selectmon(Monitor *m)
 	if (m == selmon)
 		return;
 	Monitor *old = selmon;
-	focusclient(m->sel); /* bring to top of stack */
-	setfocus(NULL);
 	selmon = m;
-	setfocus(m->sel);
+	refocus();
 	drawbar(old);
 
 	drawbar(m); // <-req (hold here for now)
@@ -1730,24 +1756,6 @@ tostacktop(Client *c)
 }
 
 void
-setfocus(Client *c)
-{
-	if (c == selmon->sel)
-		return;
-	if (selmon->sel) {
-		grabbuttons(selmon->sel, 0);
-		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeNorm][ColBorder].pixel);
-	}
-	if (c) {
-		setxfocus(c); /* call this on NULL to set root focus */
-		if (c->isurgent)
-			seturgent(c, 0);
-		grabbuttons(c, 1);
-		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
-	}
-}
-
-void
 unmanage(Client *c, int destroyed)
 {
 	Monitor *m = c->mon;
@@ -1939,11 +1947,8 @@ updatesel(Monitor *m)
 	for (c = stack; c && !VISIBLEON(c, m); c = c->snext);
 	if (m->sel == c)
 		return;
-	if (m == selmon)
-		setfocus(NULL);
 	m->sel = c;
-	if (m == selmon)
-		setfocus(c);
+	refocus();
 }
 
 void
@@ -2123,10 +2128,11 @@ zoom(const Arg *arg) /* COMMAND ✓ */
 		if (!(c = nexttiled(selmon, c->next)))
 			return;
 	toclienttop(c);
-	// focusclient(c); // dwm behavior
+	// selmon->sel = c; // dwm behavior
+	// refocus(); // dwm behavior
 	raiseclient(c);
 	arrange(c->mon);
-	// drawbar(c->mon); // if focusclient above
+	// drawbar(c->mon); // if dwm behavior
 }
 
 int
