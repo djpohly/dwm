@@ -24,6 +24,18 @@
 //  - The X focus belongs to c.
 //  - selmon->sel == c.
 //  - There is a focused client && stack == c.
+//
+// If we define the focused client as selmon->sel, then we can handily represent
+// non-focus as well as focus.  However, it means we can't change selmon without
+// first defocusing, which makes mousemove not so easy.
+//
+// If we define the focused client as stack, then we have to check
+// (!stack || !VISIBLEON(stack, selmon)) rather than simply !selmon->sel, but it
+// still represents non-focus.  We can change selmon now, but we cannot
+// tostacktop without first defocusing.  Technically I think that is ok...
+//
+// THERE IS (currently) NO HARM in calling defocus() on something lacking focus!
+//
 // 
 // Invariants:
 //  - For any monitor m, m->sel == nextvisible(m, stack).  (denormalization)
@@ -45,7 +57,45 @@
 //      2. It is placed at the bottom of the stack.  (More consistent with
 //         definition of stack as "most recently focused.")
 
+// Selmon is required because we need to be able to identify the selected
+// monitor (not based on mouse position) even when there are no clients.  The
+// alternative would be something like making a fake client for the "unselected"
+// version of each monitor, but that seems like it would require a lot of
+// special-casing.
+
+// We need to be able to:
+//  - Focus a particular client and monitor (enternotify, buttonpress)
+//  - Focus a particular monitor and whatever is selected on it (buttonpress,
+//    motionnotify, focusmon, maybe movemouse/resizemouse)
+//     - Use this also for updatesel?!?
+//  - Focus a particular client on the current monitor (focusstack)
+//  - Focus whatever is selected (or should be selected) on the current monitor
+//    (configurenotify, tagmon)
+//
+// Can we leave stack set to the previous focused client (if any) so that it can
+// be used to defocus?  Note that it does no harm to defocus it if it was not
+// visible/focused (and therefore nothing was), plus it does no harm to focus it
+// if it is already focused.
+
+// Primitives:
+//  - tostacktop: brings a client to top of stack
+//  - refocusmon: sets selmon and changes focus to nextvisible(selmon, stack)
+//  - global variable sel or focus: currently focused client
+
+// Nope.  We use other monitors' sel to get the title to draw on the bar.
+	// What if we relax the "sel" invariant to include only selmon?  Can we
+	// do away with other monitors' sel altogether?
+	// !stack ==> !sel
+	// stack && !VISIBLEON(stack, stack->mon) ==> !sel
+	// stack && VISIBLEON(stack, stack->mon) ==> sel != NULL
+	// Invariant: sel == stack || 
+	// Invariant: !sel == (!stack || !VISIBLEON(stack, stack->mon))
+	// Invariant: !sel || stack == sel
+	// Invariant: !sel || selmon == sel->mon == stack->mon
+
 // # EVENTS
+
+static Client *focus;
 
 // ## Structure/Substructure
 
@@ -109,21 +159,12 @@ buttonpress()
 	// ...
 	if ((c == wintoclient(ev->window))) {
 		EXPECT(m == c->mon);
-		if (c != selmon->sel) {
-			defocus(selmon->sel);
-			enfocus(c);
-			selmon = c->mon;
-			selmon->sel = c;
-		}
-
+		m->sel = c;
 		raiseclient(c);
 		// ...
 	}
-	if (m->sel != selmon->sel) {
-		defocus(selmon->sel);
-		enfocus(m->sel);
-	}
 	selmon = m;
+	refocus3();
 	// ...
 }
 
@@ -139,8 +180,8 @@ configurenotify()
 	// will want to take a look at updategeom
 	// ...
 	Client *c = nextvisible(selmon, stack);
-	if (selmon->sel != c) {
-		defocus(selmon->sel);
+	if (c != selmon->sel) {
+		defocus(stack);
 		enfocus(c);
 		selmon->sel = c;
 	}
@@ -161,16 +202,13 @@ enternotify()
 	c = wintoclient(ev->window);
 	if (c == selmon->sel)
 		return;
-	if (!c) {
-		m = wintomon(ev->window);
-		c = m->sel;
+	if (c) {
+		selmon = c->mon;
+		selmon->sel = c;
 	} else
-		m = c->mon;
+		selmon = wintomon(ev->window);
 
-	defocus(selmon->sel);
-	selmon = m;
-	selmon->sel = c;
-	enfocus(selmon->sel);
+	refocus3();
 }
 
 void
@@ -185,9 +223,8 @@ motionnotify()
 	static Monitor *mon = NULL;
 	// ...
 	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
-		defocus(selmon->sel);
-		enfocus(m->sel);
 		selmon = m;
+		refocus3();
 	}
 	mon = m;
 }
@@ -212,9 +249,8 @@ focusstack(const Arg *arg)
 	if (/* !c || */ c == selmon->sel)
 		return;
 
-	defocus(selmon->sel);
-	enfocus(c);
 	selmon->sel = c;
+	refocus3();
 
 	raiseclient(c); // or restack(c->mon);
 	drawbar(c->mon);
@@ -227,12 +263,22 @@ focusmon(const Arg *arg)
 	Monitor *m = dirtomon(arg->i);
 	if (m == selmon)
 		return;
-	defocus(old->sel); // == selmon->sel
-	// Technically, if (old->sel || m->sel)
-	enfocus(m->sel); // == selmon->sel
 	selmon = m;
+	refocus3();
 	drawbar(old);
 	drawbar(m);
+}
+
+void
+refocusmon(Monitor *m)
+{
+	Client *newfocus = nextvisible(m, stack);
+	selmon = m;
+	if (newfocus == focus)
+		return;
+	defocus(stack);
+	sel = newfocus;
+	enfocus(sel);
 }
 
 void
@@ -393,6 +439,81 @@ enfocus(Client *c)
 	xborder(c, SEL);
 }
 
+void
+enfocus2(Client *c)
+{
+	// should be called after defocus
+	setxfocus(c);
+	if (!c)
+		return;
+	if (c->isurgent)
+		seturgent(c, 0);
+	grabbuttons(c, 1);
+	xborder(c, SEL);
+}
+
+void
+refocus(Monitor *m, Client *c)
+{
+	Client *oldfocus = selmon->sel;
+	selmon = m;
+	selmon->sel = c;
+	if (oldfocus != selmon->sel) {
+		defocus(stack);
+		enfocus(selmon->sel);
+	}
+}
+
+void
+refocus2(Monitor *m, Client *c)
+{
+	Client *oldfocus = selmon->sel;
+	selmon = m ? m : selmon;
+	selmon->sel = c ? c : selmon->sel;
+	if (selmon->sel != oldfocus) {
+		defocus(stack);
+		enfocus(selmon->sel);
+	}
+}
+
+void
+refocus3()
+{
+	if (selmon->sel != stack)
+		defocus(stack);
+	tostacktop(selmon->sel);
+	enfocus2(selmon->sel);
+}
+
+void
+updatesel(Monitor *m)
+{
+	m->sel = nextvisible(m, stack);
+	refocus3();
+}
+
+void
+selectmon(Monitor *m)
+{
+	if (m == selmon)
+		return;
+	defocus(stack);
+	enfocus(m->sel);
+	selmon = m;
+}
+
+void // if c == NULL, defocuses and leaves selmon as is
+focusclient(Client *c)
+{
+	if (c == selmon->sel)
+		return;
+	defocus(stack);
+	enfocus(c);
+	if (c)
+		selmon = c->mon;
+	selmon->sel = c;
+}
+
 // ## Layout
 
 void
@@ -406,22 +527,11 @@ raiseclient(Client *c)
 void
 setclienttags(Client *c, unsigned int new)
 {
-	int vis;
 	if (!new || new == c->tags)
 		return;
 
-	vis = VISIBLEON(c, c->mon);
 	c->tags = new;
-	if (vis == VISIBLEON(c, c->mon))
-		return;
-	next = nextvisible(c->mon, stack);
-	if (next != c->mon->sel) {
-		if (c->mon == selmon) {
-			defocus(c->mon->sel); // == selmon->sel
-			enfocus(next); // == next == selmon->sel
-		}
-		c->mon->sel = next;
-	}
+	updatesel(c->mon);
 }
 
 void
@@ -431,27 +541,19 @@ setmontags(Monitor *m, unsigned int new)
 		return;
 	m->seltags ^= 1;
 	m->tagset[m->seltags] = new;
-	c = nextvisible(m, stack);
-	if (m->sel == c)
-		return;
-	if (m == selmon) {
-		defocus(m->sel); // == selmon->sel
-		enfocus(c);
-	}
-	m->sel = c;
+	updatesel(m);
 }
 
 void
 sendto(Client *c, Monitor *new, int keepfocus)
 {
-	Client *oldfocus;
 	// move client c to monitor new and maintain selmon or focus
 	EXPECT(c);
 	old = c->mon;
 	if (old == new)
 		return;
 
-	if ((oldfocus = selmon->sel) == c && keepfocus)
+	if (selmon->sel == c && keepfocus)
 		selmon = new;
 
 	// Can move this below c->mon = new, change c->snext to stack, and
@@ -464,10 +566,7 @@ sendto(Client *c, Monitor *new, int keepfocus)
 	new->sel = nextvisible(new, stack);
 	EXPECT(new->sel != NULL);
 
-	if (selmon->sel != oldfocus) {
-		defocus(oldfocus);
-		enfocus(selmon->sel);
-	}
+	refocus3();
 }
 
 // ## List management
@@ -505,11 +604,11 @@ unmanage(Client *c)
 	EXPECT(c->mon != NULL);
 	if (c == c->mon->sel) {
 		Client *next = nextvisible(c->mon, stack);
-		if (c->mon == selmon) {
-			defocus(c); // == selmon->sel
-			enfocus(next);
-		}
+		if (c->mon == selmon)
+			defocus(stack); // == selmon->sel
 		c->mon->sel = next;
+		if (c->mon == selmon)
+			enfocus(selmon->sel);
 	}
 	if (!destroyed) {
 		// as-is
@@ -518,3 +617,5 @@ unmanage(Client *c)
 	// ...
 	// skip the raiseclient?
 }
+
+// vim:set ft=c:
