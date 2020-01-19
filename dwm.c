@@ -2033,10 +2033,8 @@ updatewmhints(Client *c)
 		if (c == selmon->sel && wmh->flags & XUrgencyHint) {
 			wmh->flags &= ~XUrgencyHint;
 			XSetWMHints(dpy, c->win, wmh);
-		} else {
+		} else
 			c->isurgent = (wmh->flags & XUrgencyHint) ? 1 : 0;
-			drawbar(c->mon);
-		}
 		if (wmh->flags & InputHint)
 			c->neverfocus = !wmh->input;
 		else
