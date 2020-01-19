@@ -746,11 +746,10 @@ enternotify(XEvent *e)
 void
 expose(XEvent *e)
 {
-	Monitor *m;
 	XExposeEvent *ev = &e->xexpose;
 
-	if (ev->count == 0 && (m = wintomon(ev->window)))
-		drawbar(m);
+	if (ev->count == 0)
+		drawbar(wintomon(ev->window));
 }
 
 void
