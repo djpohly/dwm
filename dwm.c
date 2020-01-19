@@ -1596,15 +1596,17 @@ seturgent(Client *c, int urg)
 void
 setxfocus(Client *c)
 {
-	XSetInputFocus(dpy, c ? c->win : root, RevertToPointerRoot, CurrentTime);
 	if (!c) {
+		XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
 		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
 		return;
 	}
-	if (!c->neverfocus)
+	if (!c->neverfocus) {
+		XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
 		XChangeProperty(dpy, root, netatom[NetActiveWindow],
 			XA_WINDOW, 32, PropModeReplace,
 			(unsigned char *) &(c->win), 1);
+	}
 	sendevent(c, wmatom[WMTakeFocus]);
 }
 
