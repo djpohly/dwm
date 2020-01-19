@@ -143,7 +143,6 @@ typedef struct {
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
-static void arrangemon(Monitor *m);
 static void attach(Client *c);
 static void attachstack(Client *c);
 static void buttonpress(XEvent *e);
@@ -379,23 +378,11 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 void
 arrange(Monitor *m)
 {
-	if (m)
-		showhide(stack);
-	else for (m = mons; m; m = m->next)
-		showhide(stack);
-	if (m) {
-		arrangemon(m);
-		restack(m);
-	} else for (m = mons; m; m = m->next)
-		arrangemon(m);
-}
-
-void
-arrangemon(Monitor *m)
-{
+	showhide(stack);
 	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
 	if (m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
+	restack(m);
 }
 
 void
@@ -560,10 +547,11 @@ configurenotify(XEvent *e)
 			for (c = clients; c; c = c->next)
 				if (c->isfullscreen)
 					resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
-			for (m = mons; m; m = m->next)
+			for (m = mons; m; m = m->next) {
 				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
+				arrange(m);
+			}
 			focus(NULL);
-			arrange(NULL);
 		}
 	}
 }
@@ -1403,13 +1391,15 @@ scan(void)
 void
 sendmon(Client *c, Monitor *m)
 {
+	Monitor *oldmon = c->mon;
 	if (c->mon == m)
 		return;
 	unfocus(c, 1);
 	c->mon = m;
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	focus(NULL);
-	arrange(NULL);
+	arrange(oldmon);
+	arrange(c->mon);
 }
 
 void
