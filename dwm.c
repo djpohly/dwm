@@ -493,14 +493,11 @@ cleanup(void)
 void
 cleanupmon(Monitor *mon)
 {
-	Monitor *m;
+	Monitor **m;
 
-	if (mon == mons)
-		mons = mons->next;
-	else {
-		for (m = mons; m && m->next != mon; m = m->next);
-		m->next = mon->next;
-	}
+	for (m = &mons; *m && *m != mon; m = &(*m)->next);
+	*m = mon->next;
+
 	XUnmapWindow(dpy, mon->barwin);
 	XDestroyWindow(dpy, mon->barwin);
 	free(mon);
