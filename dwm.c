@@ -404,7 +404,7 @@ attachto(Client *c, Monitor *m)
 		drawbar(old);
 	}
 	if (m) {
-// XXX order of updatesel vs arrange vs showhide (need to be mapped to focus)
+		// XXX order of updatesel vs arrange vs showhide (need to be mapped to focus)
 		updatesel(m); // <-req
 		arrange(m); // <-req
 		showhide(stack); // <-req
@@ -431,7 +431,7 @@ attachtosel(Client *c, Monitor *m)
 }
 
 void
-buttonpress(XEvent *e) /* EVENT */
+buttonpress(XEvent *e)
 {
 	unsigned int i, x, click;
 	Arg arg = {0};
@@ -520,7 +520,7 @@ cleanupmon(Monitor *mon)
 }
 
 void
-clientmessage(XEvent *e) /* EVENT */
+clientmessage(XEvent *e)
 {
 	XClientMessageEvent *cme = &e->xclient;
 	Client *c = wintoclient(cme->window);
@@ -560,7 +560,7 @@ configure(Client *c)
 }
 
 void
-configurenotify(XEvent *e) /* EVENT */
+configurenotify(XEvent *e)
 {
 	Monitor *m;
 	Client *c;
@@ -591,7 +591,7 @@ configurenotify(XEvent *e) /* EVENT */
 }
 
 void
-configurerequest(XEvent *e) /* EVENT */
+configurerequest(XEvent *e)
 {
 	Client *c;
 	Monitor *m;
@@ -652,7 +652,7 @@ createmon(void)
 }
 
 void
-destroynotify(XEvent *e) /* EVENT */
+destroynotify(XEvent *e)
 {
 	Client *c;
 	XDestroyWindowEvent *ev = &e->xdestroywindow;
@@ -736,7 +736,7 @@ drawbars(void)
 }
 
 void
-enternotify(XEvent *e) /* EVENT */
+enternotify(XEvent *e)
 {
 	Client *c;
 	XCrossingEvent *ev = &e->xcrossing;
@@ -753,7 +753,7 @@ enternotify(XEvent *e) /* EVENT */
 }
 
 void
-expose(XEvent *e) /* EVENT */
+expose(XEvent *e)
 {
 	XExposeEvent *ev = &e->xexpose;
 
@@ -763,7 +763,7 @@ expose(XEvent *e) /* EVENT */
 
 /* there are some broken focus acquiring clients needing extra handling */
 void
-focusin(XEvent *e) /* EVENT */
+focusin(XEvent *e)
 {
 	XFocusChangeEvent *ev = &e->xfocus;
 
@@ -772,7 +772,7 @@ focusin(XEvent *e) /* EVENT */
 }
 
 void
-focusmon(const Arg *arg) /* COMMAND */
+focusmon(const Arg *arg)
 {
 	if (!mons->next)
 		return;
@@ -781,7 +781,7 @@ focusmon(const Arg *arg) /* COMMAND */
 }
 
 void
-focusstack(const Arg *arg) /* COMMAND */
+focusstack(const Arg *arg)
 {
 	Client *c = NULL, *i;
 
@@ -921,7 +921,7 @@ grabkeys(void)
 }
 
 void
-incnmaster(const Arg *arg) /* COMMAND ✓ */
+incnmaster(const Arg *arg)
 {
 	selmon->nmaster = MAX(selmon->nmaster + arg->i, 0);
 	arrange(selmon);
@@ -940,7 +940,7 @@ isuniquegeom(XineramaScreenInfo *unique, size_t n, XineramaScreenInfo *info)
 #endif /* XINERAMA */
 
 void
-keypress(XEvent *e) /* EVENT */
+keypress(XEvent *e)
 {
 	unsigned int i;
 	KeySym keysym;
@@ -956,7 +956,7 @@ keypress(XEvent *e) /* EVENT */
 }
 
 void
-killclient(const Arg *arg) /* COMMAND ✓ */
+killclient(const Arg *arg)
 {
 	if (!selmon->sel)
 		return;
@@ -1029,7 +1029,7 @@ manage(Window w, XWindowAttributes *wa)
 }
 
 void
-mappingnotify(XEvent *e) /* EVENT */
+mappingnotify(XEvent *e)
 {
 	XMappingEvent *ev = &e->xmapping;
 
@@ -1039,7 +1039,7 @@ mappingnotify(XEvent *e) /* EVENT */
 }
 
 void
-maprequest(XEvent *e) /* EVENT */
+maprequest(XEvent *e)
 {
 	static XWindowAttributes wa;
 	XMapRequestEvent *ev = &e->xmaprequest;
@@ -1067,7 +1067,7 @@ monocle(Monitor *m)
 }
 
 void
-motionnotify(XEvent *e) /* EVENT */
+motionnotify(XEvent *e)
 {
 	static Monitor *mon = NULL;
 	Monitor *m;
@@ -1081,7 +1081,7 @@ motionnotify(XEvent *e) /* EVENT */
 }
 
 void
-movemouse(const Arg *arg) /* COMMAND */
+movemouse(const Arg *arg)
 {
 	int x, y, ocx, ocy, nx, ny;
 	Client *c;
@@ -1152,7 +1152,7 @@ nexttiled(Monitor *m, Client *c)
 }
 
 void
-propertynotify(XEvent *e) /* EVENT */
+propertynotify(XEvent *e)
 {
 	Client *c;
 	Window trans;
@@ -1183,7 +1183,7 @@ propertynotify(XEvent *e) /* EVENT */
 }
 
 void
-quit(const Arg *arg) /* COMMAND ✓ */
+quit(const Arg *arg)
 {
 	running = 0;
 }
@@ -1260,7 +1260,7 @@ resizeclient(Client *c, int x, int y, int w, int h)
 }
 
 void
-resizemouse(const Arg *arg) /* COMMAND */
+resizemouse(const Arg *arg)
 {
 	int ocx, ocy, nw, nh;
 	Client *c;
@@ -1466,14 +1466,13 @@ setfullscreen(Client *c, int fullscreen)
 }
 
 void
-setlayout(const Arg *arg) /* COMMAND */
+setlayout(const Arg *arg)
 {
 	if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
 		selmon->sellt ^= 1;
 	if (arg && arg->v)
 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
-	// invariant: selmon->sel != NULL <=> any window is visible on selmon
 	if (selmon->sel)
 		arrange(selmon);
 	raiseclient(selmon->sel);
@@ -1482,7 +1481,7 @@ setlayout(const Arg *arg) /* COMMAND */
 
 /* arg > 1.0 will set mfact absolutely */
 void
-setmfact(const Arg *arg) /* COMMAND */
+setmfact(const Arg *arg)
 {
 	float f;
 
@@ -1636,7 +1635,7 @@ sigchld(int unused)
 }
 
 void
-spawn(const Arg *arg) /* COMMAND ✓ */
+spawn(const Arg *arg)
 {
 	if (arg->v == dmenucmd)
 		dmenumon[0] = '0' + selmon->num;
@@ -1652,13 +1651,13 @@ spawn(const Arg *arg) /* COMMAND ✓ */
 }
 
 void
-tag(const Arg *arg) /* COMMAND */
+tag(const Arg *arg)
 {
 	setclienttags(selmon->sel, arg->ui & TAGMASK);
 }
 
 void
-tagmon(const Arg *arg) /* COMMAND */
+tagmon(const Arg *arg)
 {
 	Monitor *m = selmon;
 
@@ -1709,7 +1708,7 @@ toclienttop(Client *c)
 }
 
 void
-togglebar(const Arg *arg) /* COMMAND ✓ */
+togglebar(const Arg *arg)
 {
 	selmon->showbar = !selmon->showbar;
 	updatebarpos(selmon);
@@ -1718,7 +1717,7 @@ togglebar(const Arg *arg) /* COMMAND ✓ */
 }
 
 void
-togglefloating(const Arg *arg) /* COMMAND */
+togglefloating(const Arg *arg)
 {
 	if (!selmon->sel || selmon->sel->isfullscreen)
 		return;
@@ -1732,14 +1731,14 @@ togglefloating(const Arg *arg) /* COMMAND */
 }
 
 void
-toggletag(const Arg *arg) /* COMMAND */
+toggletag(const Arg *arg)
 {
 	if (selmon->sel)
 		setclienttags(selmon->sel, selmon->sel->tags ^ (arg->ui & TAGMASK));
 }
 
 void
-toggleview(const Arg *arg) /* COMMAND */
+toggleview(const Arg *arg)
 {
 	setmontags(selmon, selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK));
 }
@@ -1782,7 +1781,7 @@ unmanage(Client *c, int destroyed)
 }
 
 void
-unmapnotify(XEvent *e) /* EVENT */
+unmapnotify(XEvent *e)
 {
 	Client *c;
 	XUnmapEvent *ev = &e->xunmap;
@@ -2045,7 +2044,7 @@ updatewmhints(Client *c)
 }
 
 void
-view(const Arg *arg) /* COMMAND */
+view(const Arg *arg)
 {
 	unsigned int new = (arg->ui & TAGMASK);
 	if (!new)
@@ -2118,7 +2117,7 @@ xerrorstart(Display *dpy, XErrorEvent *ee)
 }
 
 void
-zoom(const Arg *arg) /* COMMAND ✓ */
+zoom(const Arg *arg)
 {
 	Client *c = selmon->sel;
 
