@@ -1894,11 +1894,8 @@ updategeom(void)
 	} else
 #endif /* XINERAMA */
 	{ /* default monitor setup */
-		if (!mons) {
+		if (!mons)
 			mons = createmon();
-			// XXX may not be ready yet?
-			drawbar(mons);
-		}
 		if (mons->mw != sw || mons->mh != sh) {
 			dirty = 1;
 			mons->mw = mons->ww = sw;
