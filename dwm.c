@@ -295,34 +295,34 @@ applyrules(Client *c)
 		c->isfloating = 1;
 		c->mon = t->mon;
 		c->tags = t->tags;
-	} else {
-		/* rule matching */
-		c->isfloating = 0;
-		c->mon = selmon;
-		c->tags = 0;
-		XGetClassHint(dpy, c->win, &ch);
-		class    = ch.res_class ? ch.res_class : broken;
-		instance = ch.res_name  ? ch.res_name  : broken;
-
-		for (i = 0; i < LENGTH(rules); i++) {
-			r = &rules[i];
-			if ((!r->title || strstr(c->name, r->title))
-					&& (!r->class || strstr(class, r->class))
-					&& (!r->instance || strstr(instance, r->instance)))
-			{
-				c->isfloating = r->isfloating;
-				c->tags |= r->tags;
-				for (m = mons; m && m->num != r->monitor; m = m->next);
-				if (m)
-					c->mon = m;
-			}
-		}
-		if (ch.res_class)
-			XFree(ch.res_class);
-		if (ch.res_name)
-			XFree(ch.res_name);
-		c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
+		return;
 	}
+	/* rule matching */
+	c->isfloating = 0;
+	c->mon = selmon;
+	c->tags = 0;
+	XGetClassHint(dpy, c->win, &ch);
+	class    = ch.res_class ? ch.res_class : broken;
+	instance = ch.res_name  ? ch.res_name  : broken;
+
+	for (i = 0; i < LENGTH(rules); i++) {
+		r = &rules[i];
+		if ((!r->title || strstr(c->name, r->title))
+				&& (!r->class || strstr(class, r->class))
+				&& (!r->instance || strstr(instance, r->instance)))
+		{
+			c->isfloating = r->isfloating;
+			c->tags |= r->tags;
+			for (m = mons; m && m->num != r->monitor; m = m->next);
+			if (m)
+				c->mon = m;
+		}
+	}
+	if (ch.res_class)
+		XFree(ch.res_class);
+	if (ch.res_name)
+		XFree(ch.res_name);
+	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
 }
 
 int
