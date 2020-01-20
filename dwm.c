@@ -143,8 +143,6 @@ typedef struct {
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
-static void attach(Client *c);
-static void attachstack(Client *c);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void cleanup(void);
@@ -155,8 +153,6 @@ static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
-static void detach(Client *c);
-static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
@@ -205,10 +201,12 @@ static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
+static void toclienttop(Client *c);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
+static void tostacktop(Client *c);
 static void unfocus(Client *c, int setfocus);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
@@ -382,20 +380,6 @@ arrange(Monitor *m)
 	if (m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
 	restack(m);
-}
-
-void
-attach(Client *c)
-{
-	c->next = clients;
-	clients = c;
-}
-
-void
-attachstack(Client *c)
-{
-	c->snext = stack;
-	stack = c;
 }
 
 void
@@ -625,29 +609,6 @@ destroynotify(XEvent *e)
 		unmanage(c, 1);
 }
 
-void
-detach(Client *c)
-{
-	Client **tc;
-
-	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
-	*tc = c->next;
-}
-
-void
-detachstack(Client *c)
-{
-	Client **tc, *t;
-
-	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
-	*tc = c->snext;
-
-	if (c == c->mon->sel) {
-		for (t = stack; t && !VISIBLEON(t, c->mon); t = t->snext);
-		c->mon->sel = t;
-	}
-}
-
 Monitor *
 dirtomon(int dir)
 {
@@ -762,8 +723,7 @@ focus(Client *c)
 			selmon = c->mon;
 		if (c->isurgent)
 			seturgent(c, 0);
-		detachstack(c);
-		attachstack(c);
+		tostacktop(c);
 		grabbuttons(c, 1);
 		XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
 	}
@@ -1029,8 +989,9 @@ manage(Window w, XWindowAttributes *wa)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating)
 		XRaiseWindow(dpy, c->win);
-	attach(c);
-	attachstack(c);
+	c->next = clients;
+	c->snext = stack;
+	clients = stack = c;
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
@@ -1647,6 +1608,17 @@ tile(Monitor *m)
 }
 
 void
+toclienttop(Client *c)
+{
+	Client **tc;
+
+	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+	c->next = clients;
+	clients = c;
+}
+
+void
 togglebar(const Arg *arg)
 {
 	selmon->showbar = !selmon->showbar;
@@ -1695,6 +1667,17 @@ toggleview(const Arg *arg)
 }
 
 void
+tostacktop(Client *c)
+{
+	Client **tc;
+
+	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
+	c->snext = stack;
+	stack = c;
+}
+
+void
 unfocus(Client *c, int setfocus)
 {
 	if (!c)
@@ -1708,11 +1691,20 @@ unfocus(Client *c, int setfocus)
 void
 unmanage(Client *c, int destroyed)
 {
+	Client *t, **tc;
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
-	detach(c);
-	detachstack(c);
+	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
+
+	if (c == c->mon->sel) {
+		for (t = stack; t && !VISIBLEON(t, c->mon); t = t->snext);
+		c->mon->sel = t;
+	}
+
 	if (!destroyed) {
 		wc.border_width = c->oldbw;
 		XGrabServer(dpy); /* avoid race conditions */
@@ -2060,8 +2052,7 @@ zoom(const Arg *arg)
 	if (c == nexttiled(selmon, clients))
 		if (!c || !(c = nexttiled(selmon, c->next)))
 			return;
-	detach(c);
-	attach(c);
+	toclienttop(c);
 	focus(c);
 	arrange(c->mon);
 }
