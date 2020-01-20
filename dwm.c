@@ -989,6 +989,7 @@ manage(Window w, XWindowAttributes *wa)
 
 	updatetitle(c);
 	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
+		c->isfloating = 1;
 		c->tags = t->tags;
 		attachto(c, t->mon);
 	} else
@@ -1012,8 +1013,7 @@ manage(Window w, XWindowAttributes *wa)
 	updatewmhints(c);
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
 	grabbuttons(c, 0);
-	if (!c->isfloating)
-		c->isfloating = c->oldstate = trans != None || c->isfixed;
+	c->isfloating = c->oldstate = c->isfloating || c->isfixed;
 	if (c->isfloating)
 		XRaiseWindow(dpy, c->win);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
