@@ -148,7 +148,6 @@ typedef struct {
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
-static void attachto(Client *c, Monitor *m);
 static void attachtosel(Client *c, Monitor *m);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
@@ -323,7 +322,8 @@ applyrules(Client *c)
 			XFree(ch.res_name);
 		c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : mon->tagset[mon->seltags];
 	}
-	attachto(c, mon);
+	// XXX order of updatesel vs arrange vs showhide (need to be mapped to focus)
+	c->mon = mon;
 }
 
 int
@@ -397,29 +397,6 @@ arrange(Monitor *m)
 {
 	if (/* XXX addme: m->sel && */ m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
-}
-
-void
-attachto(Client *c, Monitor *m)
-{
-	Monitor *old = c->mon;
-
-	if (c->mon == m)
-		return;
-	c->mon = m;
-	if (old) {
-		detach(c);
-		updatesel(old);
-		arrange(old);
-		drawbar(old);
-	}
-	if (m) {
-		// XXX order of updatesel vs arrange vs showhide (need to be mapped to focus)
-		updatesel(m); // <-req
-		arrange(m); // <-req
-		showhide(stack); // <-req
-		drawbar(m); // <-req
-	}
 }
 
 void
@@ -1036,7 +1013,7 @@ manage(Window w, XWindowAttributes *wa)
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
 	setclientstate(c, NormalState);
 	showhide(stack);
-	updatesel(selmon); // focus it if it appears on selmon
+	updatesel(c->mon); // will focus it if it appears on selmon
 	arrange(c->mon);
 	raiseclient(c);
 	XMapWindow(dpy, c->win);
@@ -1777,7 +1754,8 @@ unmanage(Client *c, int destroyed)
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
-	attachto(c, NULL);
+	detach(c);
+	updatesel(m);
 	if (!destroyed) {
 		wc.border_width = c->oldbw;
 		XGrabServer(dpy); /* avoid race conditions */
