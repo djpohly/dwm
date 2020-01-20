@@ -160,6 +160,7 @@ static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
+static void detach(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
@@ -407,6 +408,7 @@ attachto(Client *c, Monitor *m)
 		return;
 	c->mon = m;
 	if (old) {
+		detach(c);
 		updatesel(old);
 		arrange(old);
 		drawbar(old);
@@ -667,6 +669,17 @@ destroynotify(XEvent *e)
 
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
+}
+
+void /* XXX inline me! */
+detach(Client *c)
+{
+	Client **tc;
+
+	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
 }
 
 Monitor *
