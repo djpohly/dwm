@@ -181,7 +181,6 @@ static void monocle(Monitor *m);
 static void motionnotify(XEvent *e);
 static void movemouse(const Arg *arg);
 static Client *nexttiled(Monitor *m, Client *c);
-static void pop(Client *);
 static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
 static Monitor *recttomon(int x, int y, int w, int h);
@@ -1164,15 +1163,6 @@ nexttiled(Monitor *m, Client *c)
 }
 
 void
-pop(Client *c)
-{
-	detach(c);
-	attach(c);
-	focus(c);
-	arrange(c->mon);
-}
-
-void
 propertynotify(XEvent *e)
 {
 	Client *c;
@@ -2070,7 +2060,10 @@ zoom(const Arg *arg)
 	if (c == nexttiled(selmon, clients))
 		if (!c || !(c = nexttiled(selmon, c->next)))
 			return;
-	pop(c);
+	detach(c);
+	attach(c);
+	focus(c);
+	arrange(c->mon);
 }
 
 int
