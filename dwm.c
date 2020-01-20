@@ -397,10 +397,10 @@ buttonpress(XEvent *e)
 	Arg arg = {0};
 	Client *c;
 	XButtonPressedEvent *ev = &e->xbutton;
-	Monitor *m = wintomon(ev->window);
 
 	click = ClkRootWin;
-	if (ev->window == m->barwin) {
+	selmon = wintomon(ev->window);
+	if (ev->window == selmon->barwin) {
 		i = x = 0;
 		do
 			x += TEXTW(tags[i]);
@@ -408,21 +408,20 @@ buttonpress(XEvent *e)
 		if (i < LENGTH(tags)) {
 			click = ClkTagBar;
 			arg.ui = 1 << i;
-		} else if (ev->x < x + m->blw)
+		} else if (ev->x < x + selmon->blw)
 			click = ClkLtSymbol;
-		else if (ev->x > m->ww - TEXTW(stext))
+		else if (ev->x > selmon->ww - TEXTW(stext))
 			click = ClkStatusText;
 		else
 			click = ClkWinTitle;
 	} else if ((c = wintoclient(ev->window))) {
-		EXPECT(m == c->mon);
-		m->sel = c;
+		EXPECT(selmon == c->mon);
+		selmon->sel = c;
 		raiseclient(c); // raise on click
 		XAllowEvents(dpy, ReplayPointer, CurrentTime);
 		click = ClkClientWin;
 	}
-	/* focus monitor after client is ready */
-	selmon = m;
+	/* focus monitor/client if changed */
 	refocus();
 	for (i = 0; i < LENGTH(buttons); i++)
 		if (click == buttons[i].click && buttons[i].func && buttons[i].button == ev->button
