@@ -1832,8 +1832,10 @@ updategeom(void)
 						dirty = 1;
 						c->mon = mons;
 					}
-				if (m == selmon)
+				if (m == selmon) {
+					dirty = 1;
 					selmon = mons;
+				}
 				cleanupmon(m);
 			}
 		}
