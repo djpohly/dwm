@@ -1356,18 +1356,17 @@ selectmon(Monitor *m)
 void
 sendmonsel(Client *c, Monitor *m)
 {
-	Monitor *old = c->mon;
-
+	Monitor *oldmon = c->mon;
 	if (c->mon == m)
 		return;
 	if (c == selmon->sel)
 		selmon = m;
-	c->tags = m->tagset[m->seltags];
 	c->mon = m;
-	updatesel(old);
-	arrange(old);
-	arrange(m);
-	// req: drawbar(old);
+	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
+	updatesel(oldmon);
+	arrange(oldmon);
+	arrange(c->mon);
+	// req: drawbar(oldmon);
 	// req: drawbar(m);
 }
 
