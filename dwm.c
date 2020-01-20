@@ -286,18 +286,19 @@ applyrules(Client *c)
 	const char *class, *instance;
 	unsigned int i;
 	const Rule *r;
-	Monitor *m, *mon = selmon;
+	Monitor *m;
 	Client *t = NULL;
 	Window trans = None;
 	XClassHint ch = { NULL, NULL };
 
 	if (XGetTransientForHint(dpy, c->win, &trans) && (t = wintoclient(trans))) {
 		c->isfloating = 1;
-		mon = t->mon;
+		c->mon = t->mon;
 		c->tags = t->tags;
 	} else {
 		/* rule matching */
 		c->isfloating = 0;
+		c->mon = selmon;
 		c->tags = 0;
 		XGetClassHint(dpy, c->win, &ch);
 		class    = ch.res_class ? ch.res_class : broken;
@@ -313,17 +314,15 @@ applyrules(Client *c)
 				c->tags |= r->tags;
 				for (m = mons; m && m->num != r->monitor; m = m->next);
 				if (m)
-					mon = m;
+					c->mon = m;
 			}
 		}
 		if (ch.res_class)
 			XFree(ch.res_class);
 		if (ch.res_name)
 			XFree(ch.res_name);
-		c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : mon->tagset[mon->seltags];
+		c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
 	}
-	// XXX order of updatesel vs arrange vs showhide (need to be mapped to focus)
-	c->mon = mon;
 }
 
 int
