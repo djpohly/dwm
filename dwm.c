@@ -158,7 +158,6 @@ static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
 static void destroynotify(XEvent *e);
-static void detach(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
@@ -616,17 +615,6 @@ destroynotify(XEvent *e)
 
 	if ((c = wintoclient(ev->window)))
 		unmanage(c, 1);
-}
-
-void /* XXX inline me! */
-detach(Client *c)
-{
-	Client **tc;
-
-	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
-	*tc = c->next;
-	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
-	*tc = c->snext;
 }
 
 Monitor *
@@ -1744,11 +1732,16 @@ tostacktop(Client *c)
 void
 unmanage(Client *c, int destroyed)
 {
+	Client **tc;
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
-	detach(c);
+	for (tc = &clients; *tc && *tc != c; tc = &(*tc)->next);
+	*tc = c->next;
+	for (tc = &stack; *tc && *tc != c; tc = &(*tc)->snext);
+	*tc = c->snext;
 	updatesel(m);
+
 	if (!destroyed) {
 		wc.border_width = c->oldbw;
 		XGrabServer(dpy); /* avoid race conditions */
