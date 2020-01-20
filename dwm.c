@@ -743,14 +743,11 @@ focusstack(const Arg *arg)
 
 	if (!selmon->sel)
 		return;
-
 	if (arg->i > 0) {
-		//for (c = selmon->sel->next; !VISIBLEON(c); (c = c->next) || (c = selmon->clients));
 		for (c = selmon->sel->next; c && !VISIBLEON(c, selmon); c = c->next);
 		if (!c)
 			for (c = clients; c && !VISIBLEON(c, selmon); c = c->next);
 	} else {
-		//for (i = selmon->clients; i && (i != selmon->sel || !c); i = i->next)
 		for (i = clients; i != selmon->sel; i = i->next)
 			if (VISIBLEON(i, selmon))
 				c = i;
