@@ -287,16 +287,8 @@ applyrules(Client *c)
 	unsigned int i;
 	const Rule *r;
 	Monitor *m;
-	Client *t = NULL;
-	Window trans = None;
 	XClassHint ch = { NULL, NULL };
 
-	if (XGetTransientForHint(dpy, c->win, &trans) && (t = wintoclient(trans))) {
-		c->isfloating = 1;
-		c->mon = t->mon;
-		c->tags = t->tags;
-		return;
-	}
 	/* rule matching */
 	c->isfloating = 0;
 	c->mon = selmon;
@@ -971,7 +963,8 @@ killclient(const Arg *arg)
 void
 manage(Window w, XWindowAttributes *wa)
 {
-	Client *c;
+	Client *c, *t = NULL;
+	Window trans = None;
 	XWindowChanges wc;
 
 	c = ecalloc(1, sizeof(Client));
@@ -984,7 +977,12 @@ manage(Window w, XWindowAttributes *wa)
 	c->oldbw = wa->border_width;
 
 	updatetitle(c);
-	applyrules(c);
+	if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
+		c->isfloating = 1;
+		c->mon = t->mon;
+		c->tags = t->tags;
+	} else
+		applyrules(c);
 
 	if (c->x + WIDTH(c) > c->mon->mx + c->mon->mw)
 		c->x = c->mon->mx + c->mon->mw - WIDTH(c);
