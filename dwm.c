@@ -148,7 +148,6 @@ typedef struct {
 static void applyrules(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
-static void attachtosel(Client *c, Monitor *m);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void cleanup(void);
@@ -196,6 +195,7 @@ static void run(void);
 static void scan(void);
 static void selectmon(Monitor *m);
 static int sendevent(Client *c, Atom proto);
+static void sendmonsel(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setclienttags(Client *c, unsigned int tags);
 static void setfullscreen(Client *c, int fullscreen);
@@ -388,24 +388,6 @@ arrange(Monitor *m)
 {
 	if (/* XXX addme: m->sel && */ m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
-}
-
-void
-attachtosel(Client *c, Monitor *m)
-{
-	Monitor *old = c->mon;
-
-	if (c->mon == m)
-		return;
-	if (c == selmon->sel)
-		selmon = m;
-	c->tags = m->tagset[m->seltags];
-	c->mon = m;
-	updatesel(old);
-	arrange(old);
-	arrange(m);
-	// req: drawbar(old);
-	// req: drawbar(m);
 }
 
 void
@@ -1126,7 +1108,7 @@ movemouse(const Arg *arg)
 	EXPECT(c == selmon->sel);
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
 		om = c->mon;
-		attachtosel(c, m);
+		sendmonsel(c, m);
 		EXPECT(selmon == m);
 		drawbar(om);
 		drawbar(m);
@@ -1301,7 +1283,7 @@ resizemouse(const Arg *arg)
 	if ((m = recttomon(c->x, c->y, c->w, c->h)) != selmon) {
 		c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 		om = c->mon;
-		attachtosel(c, m);
+		sendmonsel(c, m);
 		EXPECT(selmon == m);
 		drawbar(om);
 		drawbar(m);
@@ -1369,6 +1351,24 @@ selectmon(Monitor *m)
 	drawbar(old);
 
 	drawbar(m); // <-req (hold here for now)
+}
+
+void
+sendmonsel(Client *c, Monitor *m)
+{
+	Monitor *old = c->mon;
+
+	if (c->mon == m)
+		return;
+	if (c == selmon->sel)
+		selmon = m;
+	c->tags = m->tagset[m->seltags];
+	c->mon = m;
+	updatesel(old);
+	arrange(old);
+	arrange(m);
+	// req: drawbar(old);
+	// req: drawbar(m);
 }
 
 int
@@ -1655,7 +1655,7 @@ tagmon(const Arg *arg)
 	if (!selmon->sel || !mons->next)
 		return;
 
-	attachtosel(selmon->sel, dirtomon(arg->i));
+	sendmonsel(selmon->sel, dirtomon(arg->i));
 	selectmon(m);
 }
 
