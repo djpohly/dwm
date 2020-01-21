@@ -186,6 +186,7 @@ static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
 static void run(void);
 static void scan(void);
+static void selectmon(Monitor *m);
 static int sendevent(Client *c, Atom proto);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
@@ -394,11 +395,8 @@ buttonpress(XEvent *e)
 
 	click = ClkRootWin;
 	/* focus monitor if necessary */
-	if ((m = wintomon(ev->window)) && m != selmon) {
-		unfocus(selmon->sel);
-		selmon = m;
-		focus(NULL);
-	}
+	if ((m = wintomon(ev->window)) && m != selmon)
+		selectmon(m);
 	if (ev->window == selmon->barwin) {
 		i = x = 0;
 		do
@@ -752,9 +750,7 @@ focusmon(const Arg *arg)
 		return;
 	if ((m = dirtomon(arg->i)) == selmon)
 		return;
-	unfocus(selmon->sel);
-	selmon = m;
-	focus(NULL);
+	selectmon(m);
 }
 
 void
@@ -1047,11 +1043,8 @@ motionnotify(XEvent *e)
 
 	if (ev->window != root)
 		return;
-	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
-		unfocus(selmon->sel);
-		selmon = m;
-		focus(NULL);
-	}
+	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon)
+		selectmon(m);
 	mon = m;
 }
 
@@ -1312,6 +1305,14 @@ scan(void)
 		if (wins)
 			XFree(wins);
 	}
+}
+
+void
+selectmon(Monitor *m)
+{
+	unfocus(selmon->sel);
+	selmon = m;
+	focus(NULL);
 }
 
 void
