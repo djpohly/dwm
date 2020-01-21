@@ -724,14 +724,14 @@ refocus()
 		grabbuttons(stack, 0);
 		XSetWindowBorder(dpy, stack->win, scheme[SchemeNorm][ColBorder].pixel);
 	}
-	setxfocus(selmon->sel);
 	if (selmon->sel) {
-		tostacktop(selmon->sel);
 		if (selmon->sel->isurgent)
 			seturgent(selmon->sel, 0);
+		tostacktop(selmon->sel);
 		grabbuttons(selmon->sel, 1);
 		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeSel][ColBorder].pixel);
 	}
+	setxfocus(selmon->sel);
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
