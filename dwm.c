@@ -163,6 +163,7 @@ static void drawbar(Monitor *m);
 static void drawbars(void);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
+static void refocus(void);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
@@ -186,7 +187,6 @@ static void propertynotify(XEvent *e);
 static void quit(const Arg *arg);
 static void raiseclient(Client *c);
 static Monitor *recttomon(int x, int y, int w, int h);
-static void refocus(void);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
@@ -717,6 +717,23 @@ expose(XEvent *e)
 		drawbar(wintomon(ev->window));
 }
 
+void
+refocus()
+{
+	if (stack && stack != selmon->sel) {
+		grabbuttons(stack, 0);
+		XSetWindowBorder(dpy, stack->win, scheme[SchemeNorm][ColBorder].pixel);
+	}
+	setxfocus(selmon->sel);
+	if (selmon->sel) {
+		tostacktop(selmon->sel);
+		if (selmon->sel->isurgent)
+			seturgent(selmon->sel, 0);
+		grabbuttons(selmon->sel, 1);
+		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeSel][ColBorder].pixel);
+	}
+}
+
 /* there are some broken focus acquiring clients needing extra handling */
 void
 focusin(XEvent *e)
@@ -1171,23 +1188,6 @@ recttomon(int x, int y, int w, int h)
 			r = m;
 		}
 	return r;
-}
-
-void
-refocus()
-{
-	if (stack && stack != selmon->sel) {
-		grabbuttons(stack, 0);
-		XSetWindowBorder(dpy, stack->win, scheme[SchemeNorm][ColBorder].pixel);
-	}
-	setxfocus(selmon->sel);
-	if (selmon->sel) {
-		tostacktop(selmon->sel);
-		if (selmon->sel->isurgent)
-			seturgent(selmon->sel, 0);
-		grabbuttons(selmon->sel, 1);
-		XSetWindowBorder(dpy, selmon->sel->win, scheme[SchemeSel][ColBorder].pixel);
-	}
 }
 
 void
