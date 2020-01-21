@@ -207,7 +207,7 @@ static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void tostacktop(Client *c);
-static void unfocus(Client *c, int setfocus);
+static void unfocus(Client *c);
 static void unmanage(Client *c, int destroyed);
 static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
@@ -395,7 +395,7 @@ buttonpress(XEvent *e)
 	click = ClkRootWin;
 	/* focus monitor if necessary */
 	if ((m = wintomon(ev->window)) && m != selmon) {
-		unfocus(selmon->sel, 1);
+		unfocus(selmon->sel);
 		selmon = m;
 		focus(NULL);
 	}
@@ -696,7 +696,7 @@ enternotify(XEvent *e)
 	c = wintoclient(ev->window);
 	m = c ? c->mon : wintomon(ev->window);
 	if (m != selmon) {
-		unfocus(selmon->sel, 1);
+		unfocus(selmon->sel);
 		selmon = m;
 	} else if (!c || c == selmon->sel)
 		return;
@@ -718,7 +718,7 @@ focus(Client *c)
 	if (!c || !VISIBLEON(c, c->mon))
 		for (c = stack; c && !VISIBLEON(c, selmon); c = c->snext);
 	if (selmon->sel && selmon->sel != c)
-		unfocus(selmon->sel, 0);
+		unfocus(selmon->sel);
 	if (c) {
 		if (c->mon != selmon)
 			selmon = c->mon;
@@ -752,7 +752,7 @@ focusmon(const Arg *arg)
 		return;
 	if ((m = dirtomon(arg->i)) == selmon)
 		return;
-	unfocus(selmon->sel, 0);
+	unfocus(selmon->sel);
 	selmon = m;
 	focus(NULL);
 }
@@ -996,7 +996,7 @@ manage(Window w, XWindowAttributes *wa)
 	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
 	setclientstate(c, NormalState);
 	if (c->mon == selmon)
-		unfocus(selmon->sel, 0);
+		unfocus(selmon->sel);
 	c->mon->sel = c;
 	arrange(c->mon);
 	XMapWindow(dpy, c->win);
@@ -1048,7 +1048,7 @@ motionnotify(XEvent *e)
 	if (ev->window != root)
 		return;
 	if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
-		unfocus(selmon->sel, 1);
+		unfocus(selmon->sel);
 		selmon = m;
 		focus(NULL);
 	}
@@ -1320,7 +1320,7 @@ sendmon(Client *c, Monitor *m)
 	Monitor *oldmon = c->mon;
 	if (c->mon == m)
 		return;
-	unfocus(c, 1);
+	unfocus(c);
 	c->mon = m;
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	focus(NULL);
@@ -1677,14 +1677,12 @@ tostacktop(Client *c)
 }
 
 void
-unfocus(Client *c, int setfocus)
+unfocus(Client *c)
 {
 	if (!c)
 		return;
 	grabbuttons(c, 0);
 	XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
-	if (setfocus)
-		setxfocus(NULL);
 }
 
 void
