@@ -476,12 +476,13 @@ cleanup(void)
 
 	view(&a);
 	selmon->lt[selmon->sellt] = &foo;
-	for (m = mons; m; m = m->next)
+	while ((m = mons)) {
 		while (m->stack)
 			unmanage(m->stack, 0);
+		mons = mons->next;
+		cleanupmon(m);
+	}
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
-	while (mons)
-		cleanupmon(mons);
 	for (i = 0; i < CurLast; i++)
 		drw_cur_free(drw, cursor[i]);
 	for (i = 0; i < LENGTH(colors); i++)
@@ -498,14 +499,6 @@ cleanup(void)
 void
 cleanupmon(Monitor *mon)
 {
-	Monitor *m;
-
-	if (mon == mons)
-		mons = mons->next;
-	else {
-		for (m = mons; m && m->next != mon; m = m->next);
-		m->next = mon->next;
-	}
 	XUnmapWindow(dpy, mon->barwin);
 	XDestroyWindow(dpy, mon->barwin);
 	free(mon);
@@ -1858,7 +1851,7 @@ updategeom(void)
 	if (XineramaIsActive(dpy)) {
 		int i, j, n, nn;
 		Client *c;
-		Monitor *m;
+		Monitor *m, **pm;
 		XineramaScreenInfo *info = XineramaQueryScreens(dpy, &nn);
 		XineramaScreenInfo *unique = NULL;
 
@@ -1892,8 +1885,9 @@ updategeom(void)
 					updatebarpos(m);
 				}
 		} else { /* less monitors available nn < n */
-			for (i = nn; i < n; i++) {
-				for (m = mons; m && m->next; m = m->next);
+			for (i = 0, pm = &mons; i < nn; i++, pm = &(*pm)->next);
+			for (/* i */; i < n; i++) {
+				m = *pm;
 				while ((c = m->clients)) {
 					dirty = 1;
 					m->clients = c->next;
@@ -1904,6 +1898,7 @@ updategeom(void)
 				}
 				if (m == selmon)
 					selmon = mons;
+				*pm = (*pm)->next;
 				cleanupmon(m);
 			}
 		}
