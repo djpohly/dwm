@@ -225,7 +225,7 @@ static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
 static void updatebars(void);
 static void updateclientlist(void);
-static int updategeom(int width, int height);
+static void updategeom(int width, int height);
 static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
 static void updatestatus(void);
@@ -549,21 +549,11 @@ configure(Client *c)
 void
 configurenotify(XEvent *e)
 {
-	Monitor *m;
-	Client *c;
 	XConfigureEvent *ev = &e->xconfigure;
 
 	/* TODO: updategeom handling sucks, needs to be simplified */
-	if (ev->window == root && updategeom(ev->width, ev->height)) {
-		drw_resize(drw, sw, bh);
-		updatebars();
-		for (m = mons; m; m = m->next)
-			for (c = m->clients; c; c = c->next)
-				if (c->isfullscreen)
-					resizeclient(c, m->mx, m->my, m->mw, m->mh);
-		focus(NULL);
-		arrange(NULL);
-	}
+	if (ev->window == root)
+		updategeom(ev->width, ev->height);
 }
 
 void
@@ -1563,9 +1553,6 @@ setup(void)
 	drw = drw_create(dpy, screen, root, sw, sh);
 	if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
 		die("no fonts could be loaded.");
-	lrpad = drw->fonts->h;
-	bh = drw->fonts->h + 2;
-	updategeom(sw, sh);
 	/* init atoms */
 	utf8string = XInternAtom(dpy, "UTF8_STRING", False);
 	wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -1590,6 +1577,9 @@ setup(void)
 	for (i = 0; i < LENGTH(colors); i++)
 		scheme[i] = drw_scm_create(drw, colors[i], 3);
 	/* init bars */
+	lrpad = drw->fonts->h;
+	bh = drw->fonts->h + 2;
+	updategeom(sw, sh);
 	updatebars();
 	updatestatus();
 	/* supporting window for NetWMCheck */
@@ -1868,11 +1858,13 @@ updateclientlist()
 				(unsigned char *) &(c->win), 1);
 }
 
-int
+void
 updategeom(int width, int height)
 {
 	int n, dirty;
 	XineramaScreenInfo *info;
+	Monitor *m;
+	Client *c;
 
 	dirty = (sw != width || sh != height);
 	sw = width;
@@ -1904,8 +1896,15 @@ updategeom(int width, int height)
 	if (dirty) {
 		selmon = mons;
 		selmon = wintomon(root);
+		drw_resize(drw, sw, bh);
+		updatebars();
+		for (m = mons; m; m = m->next)
+			for (c = m->clients; c; c = c->next)
+				if (c->isfullscreen)
+					resizeclient(c, m->mx, m->my, m->mw, m->mh);
+		focus(NULL);
+		arrange(NULL);
 	}
-	return dirty;
 }
 
 void
