@@ -1263,6 +1263,8 @@ resizemons(XineramaScreenInfo *info, int n)
 	Monitor *m, **pm;
 	Client *c;
 
+	if (!info)
+		info = &(XineramaScreenInfo) {0, 0, 0, sw, sh};
 	for (i = 0, pm = &mons; i < n; i++, pm = &(*pm)->next) {
 		if (!*pm) /* reached end of mons before n */
 			*pm = createmon();
@@ -1859,8 +1861,8 @@ updateclientlist()
 void
 updategeom(int width, int height)
 {
-	int n, dirty;
-	XineramaScreenInfo *info;
+	int n = 1, dirty;
+	XineramaScreenInfo *info = NULL;
 	Monitor *m;
 	Client *c;
 
@@ -1879,15 +1881,8 @@ updategeom(int width, int height)
 			if (j == n)
 				info[n++] = info[i];
 		}
-	} else
-#endif
-	{
-		n = 1;
-		info = ecalloc(1, sizeof(XineramaScreenInfo));
-		info->width = sw;
-		info->height = sh;
 	}
-
+#endif
 	dirty = resizemons(info, n) || dirty;
 	XFree(info);
 
