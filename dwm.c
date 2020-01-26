@@ -225,7 +225,7 @@ static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
 static void updatebars(void);
 static void updateclientlist(void);
-static int updategeom(void);
+static int updategeom(int width, int height);
 static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
 static void updatestatus(void);
@@ -552,25 +552,19 @@ configurenotify(XEvent *e)
 	Monitor *m;
 	Client *c;
 	XConfigureEvent *ev = &e->xconfigure;
-	int dirty;
 
 	/* TODO: updategeom handling sucks, needs to be simplified */
-	if (ev->window == root) {
-		dirty = (sw != ev->width || sh != ev->height);
-		sw = ev->width;
-		sh = ev->height;
-		if (updategeom() || dirty) {
-			drw_resize(drw, sw, bh);
-			updatebars();
-			for (m = mons; m; m = m->next) {
-				for (c = m->clients; c; c = c->next)
-					if (c->isfullscreen)
-						resizeclient(c, m->mx, m->my, m->mw, m->mh);
-				XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
-			}
-			focus(NULL);
-			arrange(NULL);
+	if (ev->window == root && updategeom(ev->width, ev->height)) {
+		drw_resize(drw, sw, bh);
+		updatebars();
+		for (m = mons; m; m = m->next) {
+			for (c = m->clients; c; c = c->next)
+				if (c->isfullscreen)
+					resizeclient(c, m->mx, m->my, m->mw, m->mh);
+			XMoveResizeWindow(dpy, m->barwin, m->wx, m->by, m->ww, bh);
 		}
+		focus(NULL);
+		arrange(NULL);
 	}
 }
 
@@ -1573,7 +1567,7 @@ setup(void)
 		die("no fonts could be loaded.");
 	lrpad = drw->fonts->h;
 	bh = drw->fonts->h + 2;
-	updategeom();
+	updategeom(sw, sh);
 	/* init atoms */
 	utf8string = XInternAtom(dpy, "UTF8_STRING", False);
 	wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -1875,11 +1869,14 @@ updateclientlist()
 }
 
 int
-updategeom(void)
+updategeom(int width, int height)
 {
 	int n, dirty;
 	XineramaScreenInfo *info;
 
+	dirty = (sw != width || sh != height);
+	sw = width;
+	sh = height;
 #ifdef XINERAMA
 	if (XineramaIsActive(dpy)) {
 		int i, j, total;
@@ -1901,7 +1898,7 @@ updategeom(void)
 		info->height = sh;
 	}
 
-	dirty = resizemons(info, n);
+	dirty = resizemons(info, n) || dirty;
 	XFree(info);
 
 	if (dirty) {
