@@ -36,6 +36,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
 #include <X11/Xutil.h>
+#include <X11/Xft/Xft.h>
 #ifdef XINERAMA
 #include <X11/extensions/Xinerama.h>
 #else /* XINERAMA */
@@ -44,7 +45,6 @@ typedef struct {
 	short x_org, y_org, width, height;
 } XineramaScreenInfo;
 #endif /* XINERAMA */
-#include <X11/Xft/Xft.h>
 
 #include "drw.h"
 #include "util.h"
