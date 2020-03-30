@@ -42,6 +42,7 @@ static const Rule rules[] = {
 	{ "dspdfviewer", NULL,     NULL,       0,            1,        -1 },
 	{ "Gl_presenter", NULL,    NULL,       0,            1,        -1 },
 	{ NULL,    "top_block.py", NULL,       0,            1,        -1 },
+	{ NULL, "sun-awt-X11-XFramePeer", NULL, 0,           1,        -1 },
 	{ NULL,       "urxvt-pdl", NULL,      16,            0,        -1 },
 };
 
