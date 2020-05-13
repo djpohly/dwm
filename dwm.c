@@ -516,8 +516,10 @@ cleanup(void)
 	view(&a);
 	selmon->lt[selmon->sellt] = &foo;
 	for (m = mons; m; m = m->next)
-		while (m->stack)
+		while (m->stack) {
+			XMapWindow(dpy, m->stack->win);
 			unmanage(m->stack, 0);
+		}
 	XUngrabKey(dpy, AnyKey, AnyModifier, root);
 	while (mons)
 		cleanupmon(mons);
