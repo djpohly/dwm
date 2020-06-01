@@ -4,7 +4,7 @@
 #define MODKEY Mod4Mask
 
 /* commands */
-static const char *termcmd[]  = { "/usr/bin/env", "SHLVL=0", "alacritty", NULL };
+static const char *termcmd[]  = { "/usr/bin/env", "SHLVL=0", "kitty", "-1", NULL };
 static const char *lockcmd[]  = { "xscreensaver-command", "-lock", NULL };
 static const char *lowervolcmd[]  = { "amixer", "-q", "sset", "Master", "3%-", NULL };
 static const char *raisevolcmd[]  = { "amixer", "-q", "sset", "Master", "3%+", NULL };
