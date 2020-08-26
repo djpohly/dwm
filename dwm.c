@@ -1700,14 +1700,14 @@ showhide(Client *c)
 		return;
 	if (ISVISIBLE(c)) {
 		/* show clients top down */
-		XMoveWindow(dpy, c->win, c->x, c->y);
+		XMapWindow(dpy, c->win);
 		if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
 			resize(c, c->x, c->y, c->w, c->h, 0);
 		showhide(c->snext);
 	} else {
 		/* hide clients bottom up */
 		showhide(c->snext);
-		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
+		XUnmapWindow(dpy, c->win);
 	}
 }
 
@@ -1866,12 +1866,8 @@ unmapnotify(XEvent *e)
 	Client *c;
 	XUnmapEvent *ev = &e->xunmap;
 
-	if ((c = wintoclient(ev->window))) {
-		if (ev->send_event)
-			setclientstate(c, WithdrawnState);
-		else
-			unmanage(c, 0);
-	}
+	if ((c = wintoclient(ev->window)) && ev->send_event)
+		setclientstate(c, WithdrawnState);
 }
 
 void
