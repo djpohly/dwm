@@ -602,8 +602,8 @@ configurenotify(XEvent *e)
 		sw = ev->width;
 		sh = ev->height;
 		if (updategeom() || dirty) {
-			arrange(NULL);
 			focus(NULL);
+			arrange(NULL);
 		}
 	}
 }
@@ -1271,8 +1271,8 @@ pop(Client *c)
 {
 	detach(c);
 	attach(c);
-	arrange(c->mon);
 	focus(c);
+	arrange(c->mon);
 }
 
 void
@@ -1508,8 +1508,8 @@ sendmon(Client *c, Monitor *m)
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
 	attach(c);
 	attachstack(c);
-	arrange(NULL);
 	focus(NULL);
+	arrange(NULL);
 }
 
 void
@@ -1741,8 +1741,8 @@ tag(const Arg *arg)
 {
 	if (selmon->sel && arg->ui & TAGMASK) {
 		selmon->sel->tags = arg->ui & TAGMASK;
-		arrange(selmon);
 		focus(NULL);
+		arrange(selmon);
 	}
 }
 
@@ -1806,8 +1806,8 @@ toggletag(const Arg *arg)
 	newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
 	if (newtags) {
 		selmon->sel->tags = newtags;
-		arrange(selmon);
 		focus(NULL);
+		arrange(selmon);
 	}
 }
 
@@ -1818,8 +1818,8 @@ toggleview(const Arg *arg)
 
 	if (newtagset) {
 		selmon->tagset[selmon->seltags] = newtagset;
-		arrange(selmon);
 		focus(NULL);
+		arrange(selmon);
 	}
 }
 
@@ -1856,9 +1856,9 @@ unmanage(Client *c, int destroyed)
 		XUngrabServer(dpy);
 	}
 	free(c);
+	focus(NULL);
 	updateclientlist();
 	arrange(m);
-	focus(NULL);
 }
 
 void
@@ -2086,8 +2086,8 @@ view(const Arg *arg)
 	selmon->seltags ^= 1; /* toggle sel tagset */
 	if (arg->ui & TAGMASK)
 		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
-	arrange(selmon);
 	focus(NULL);
+	arrange(selmon);
 }
 
 void
