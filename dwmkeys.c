@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <X11/Xatom.h>
 #include <X11/Xlib.h>
+#include <X11/Xproto.h>
 
 /* macros */
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
@@ -37,6 +37,7 @@ static int screen;
 static unsigned int numlockmask = 0;
 static Display *dpy;
 static Window root;
+static int (*xerrorxlib)(Display *, XErrorEvent *);
 
 /* configuration, allows nested code to access above variables */
 #include "dwmkeys.h"
@@ -150,6 +151,17 @@ updatenumlockmask(void) {
 }
 
 int
+xerror(Display *dpy, XErrorEvent *ee)
+{
+	if (ee->error_code == BadWindow
+	|| (ee->request_code == X_GrabKey && ee->error_code == BadAccess))
+		return 0;
+	fprintf(stderr, "dwmkeys: fatal error: request code=%d, error code=%d\n",
+		ee->request_code, ee->error_code);
+	return xerrorxlib(dpy, ee); /* may call exit */
+}
+
+int
 main(int argc, char *argv[]) {
 	if(!(dpy = XOpenDisplay(NULL))) {
 		fprintf(stderr, "hotkeys: cannot open display\n");
@@ -160,6 +172,7 @@ main(int argc, char *argv[]) {
 
 	/* init screen */
 	root = RootWindow(dpy, screen);
+	xerrorxlib = XSetErrorHandler(xerror);
 	/* select for events */
 	grabkeys();
 	/* output lines as soon as printed */
