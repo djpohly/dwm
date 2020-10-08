@@ -6,6 +6,7 @@
 /* commands */
 static const char *termcmd[]  = { "/usr/bin/env", "SHLVL=0", "kitty", "-1", NULL };
 static const char *lockcmd[]  = { "xscreensaver-command", "-lock", NULL };
+static const char *wificmd[]  = { "wpass", NULL };
 static const char *lowervolcmd[]  = { "amixer", "-q", "sset", "Master", "3%-", NULL };
 static const char *raisevolcmd[]  = { "amixer", "-q", "sset", "Master", "3%+", NULL };
 static const char *mutecmd[]  = { "amixer", "-q", "sset", "Master", "toggle", NULL };
@@ -28,10 +29,11 @@ static const char *pbutcmd[]  = { "pbut", NULL };
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ MODKEY|ShiftMask,          XK_BackSpace, spawn,          quitcmd },
-	{ MODKEY|ShiftMask,             XK_Return, spawn,          termcmd },
-	{ MODKEY,                       XK_space,  spawn,          lockcmd },
-	{ 0,                      XF86XK_PowerOff, spawn,          pbutcmd },
+	{ MODKEY|ShiftMask,          XK_BackSpace, spawn,          quitcmd},
+	{ MODKEY|ShiftMask,             XK_Return, spawn,          termcmd},
+	{ MODKEY,                       XK_space,  spawn,          lockcmd},
+	{ MODKEY,                       XK_w,      spawn,          wificmd},
+	{ 0,                      XF86XK_PowerOff, spawn,          pbutcmd},
 	{ 0,              XF86XK_AudioLowerVolume, spawn,          lowervolcmd},
 	{ 0,              XF86XK_AudioRaiseVolume, spawn,          raisevolcmd},
 	{ 0,                     XF86XK_AudioMute, spawn,          mutecmd},
