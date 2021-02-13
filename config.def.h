@@ -46,6 +46,7 @@ static const Rule rules[] = {
 	{ NULL,       "urxvt-pdl", NULL,      16,            0,        -1 },
 	{ "Java",     "java",      NULL,       0,            1,        -1 },
 	{ "zoom",     "zoom",      NULL,       0,            1,        -1 },
+	{ "Toplevel", "splash",    NULL,       0,            1,        -1 },
 };
 
 /* layout(s) */
