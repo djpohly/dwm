@@ -1727,6 +1727,7 @@ spawn(const Arg *arg)
 	if (fork() == 0) {
 		if(dpy)
 			close(ConnectionNumber(dpy));
+		dup2(STDIN_FILENO, open("/dev/null", O_RDONLY));
 		dup2(STDERR_FILENO, STDOUT_FILENO);
 		setsid();
 		execvp(((char **)arg->v)[0], (char **)arg->v);
