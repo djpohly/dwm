@@ -61,6 +61,7 @@ static const Layout layouts[] = {
 	{ "[]=",      tile },    /* first entry is default */
 	{ "TTT",      bstack },
 	{ "><>",      NULL },    /* no layout function means floating behavior */
+	{ "[M]",      monocle },
 };
 
 /* key definitions */
@@ -142,6 +143,7 @@ static Command commands[] = {
 	{ "setlayout-tiled", setlayout,      {.v = &layouts[0]} },
 	{ "setlayout-bstack",setlayout,      {.v = &layouts[1]} },
 	{ "setlayout-float", setlayout,      {.v = &layouts[2]} },
+	{ "setlayout-monocle", setlayout,    {.v = &layouts[3]} },
 	{ "togglelayout",    setlayout,      {0} },
 	{ "togglefloating",  togglefloating, {0} },
 	{ "viewall",         view,           {.ui = ~0} },

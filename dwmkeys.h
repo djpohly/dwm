@@ -71,6 +71,7 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_l,      print,          "setlayout-tiled" },
 	{ MODKEY,                       XK_l,      print,          "setlayout-bstack" },
 	{ MODKEY|ShiftMask,             XK_f,      print,          "setlayout-float" },
+	{ MODKEY|ShiftMask,             XK_m,      print,          "setlayout-monocle" },
 	{ MODKEY,                       XK_f,      print,          "togglefloating" },
 	{ MODKEY,                       XK_0,      print,          "viewall" },
 	{ MODKEY|ShiftMask,             XK_0,      print,          "tag" },
